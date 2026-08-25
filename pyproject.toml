@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "my_project"
+version = "0.1.0"
+description = "Reproducible modelling pipeline."
+authors = [{name = "Student Name", email = "student@tilburguniversity.edu"}]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+# Tools you need to develop this, but not to run it. Installed by `make install`
+# and in the Docker image; `pip install .` on its own skips them.
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "ruff>=0.6",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+# Only use your tests.
+testpaths = ["tests"]
+# So `pytest` finds src/ without installing the package first.
+pythonpath = ["."]
+
+[tool.ruff]
+exclude = [".venv", "data", "results", "notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]

@@ -1,0 +1,11 @@
+# How to cite this work. Replace the placeholders with yours.
+# Format reference: https://citation-file-format.github.io
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: ""
+authors:
+  - family-names: ""
+    given-names: ""
+version: "0.1.0"
+date-released: 2026-10-12
+license: GPL-3.0
