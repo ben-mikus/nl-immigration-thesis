@@ -1,0 +1,27 @@
+# Data stays out of git. Instead, data/README.md, describes where the data comes from and how to get it.
+data/*
+!data/README.md
+
+# Block things the code produces. It can be made again (reproducibility!).
+results/*
+!results/.gitkeep
+*.pkl
+*.joblib
+
+# Ignore Python noise
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Don't include stuff from editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+
+# Block PRIVATE key, in case it ever lands here by accident.
+# The .pub half is committed on purpose.
+id_rsa
+id_ed25519
+*.pem
+!keys/*.pub
