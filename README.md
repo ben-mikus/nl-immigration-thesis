@@ -7,8 +7,9 @@ Demographic change, including migration, has important implications for the plan
 
 The pipeline downloads a monthly migration dataset, reserves the latest six
 months as a holdout set, and fits an autoregressive baseline model to the
-remaining observations. It produces forecasts and reports mean absolute error
-(MAE) at one-, three-, and six-month horizons.
+remaining observations. It saves the forecasts, reports mean absolute error
+(MAE) at one-, three-, and six-month horizons, and visualizes the observed and
+predicted holdout values for each horizon.
 
 The current baseline uses Polish immigration data and an AutoREG model. The
 planned work will compare statistical and machine-learning models, add selected
@@ -19,9 +20,9 @@ review and the planned methodology documentation.
 ## Project Status
 
 The baseline pipeline is complete: it downloads data, creates a train/holdout
-split, trains an AutoREG model, and writes evaluation metrics. The supplied
-dataset covers monthly Polish immigration from January 2010 through December
-2025.
+split, trains an AutoREG model, writes forecast and evaluation tables, and
+creates a comparison chart. The supplied dataset covers monthly Polish
+immigration from January 2010 through December 2025.
 
 The broader implementation is in progress. Additional countries, multivariate
 features, model comparisons, business-cycle analysis, tests, and the Streamlit
@@ -41,7 +42,7 @@ u142701-capstone
 ├── models/               Trained model artifacts
 ├── notebooks/            Exploratory analysis notebooks
 ├── reports/              Literature review and planned methodology reports
-├── results/              Forecast evaluation outputs
+├── results/              Forecast tables, MAE metrics, and comparison chart
 ├── scripts/              Supporting shell scripts
 ├── src/                  Forecasting pipeline source code
 │   ├── config.py         Forecast horizons and baseline model settings
@@ -49,6 +50,7 @@ u142701-capstone
 │   ├── split.py          Creates training and holdout time-series splits
 │   ├── train.py          Fits and saves the forecasting model
 │   ├── predict.py        Generates forecasts and calculates MAE metrics
+│   ├── results.py        Displays metrics and creates horizon comparison charts
 │   ├── utils.py          Shared logging utilities
 │   └── models/
 │       └── baseline.py   Defines the AutoREG baseline model
@@ -94,14 +96,19 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Then, the complete pipeline can reproduced form the repositoy root with:
+Then, run the complete pipeline from the repository root:
 
 ```bash
 make all
 ```
 
 `make all` downloads the source dataset, creates the train/holdout split,
-trains the baseline model, and writes metrics to `results/metrics.csv`.
+trains the baseline model, and creates these outputs:
+
+- `results/forecasts.csv`: holdout observations, predictions, and absolute errors.
+- `results/metrics.csv`: MAE at the one-, three-, and six-month horizons.
+- `results/forecast_comparison_by_horizon.png`: training, observed holdout, and
+  predicted values in separate one-, three-, and six-month panels.
 
 ## Available Commands
 
@@ -113,7 +120,8 @@ The `Makefile` provides shortcuts for common tasks, many of which make up `make 
 | `make data` | Download and preprocess the source dataset. |
 | `make split` | Create training and holdout datasets from processed data. |
 | `make train` | Train and save the baseline AutoREG model. |
-| `make predict` | Generate holdout forecasts and write MAE metrics. |
+| `make predict` | Generate holdout forecasts plus forecast and MAE tables. |
+| `make results` | Display MAE metrics and create the horizon comparison chart. |
 | `make clear-data` | Remove downloaded raw and processed CSV files. |
 | `make clear-cache` | Remove model, log, and result files. |
 | `make clear-all` | Remove both generated data and cached outputs. |

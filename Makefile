@@ -1,10 +1,10 @@
 
-.PHONY: all data get-data baseline clear-data clear-cache clear-all help
+.PHONY: all data get-data baseline clear-data clear-cache clear-all help results
 
 
 # -- Main targets -----------------------------------------------------------------------------
 
-all: clear-all data split train predict
+all: clear-all data split train predict results
 
 data:
 	python3 -m src.data
@@ -17,6 +17,9 @@ train: split
 
 predict: train
 	python3 -m src.predict
+
+results: predict
+	python3 -m src.results
 
 
 # -- Utilities --------------------------------------------------------------------------------
@@ -39,7 +42,7 @@ help:
 	@echo "  split      	Split the preprocessed data into train/test sets."
 	@echo "  train      	Train the forecasting models."
 	@echo "  predict    	Generate predictions using the trained models."
-	@echo "  results		Evaluate and display the forecasting results."
+	@echo "  results    	Display metrics and create forecast comparison charts."
 
 	@echo "Utilities:"
 	@echo "clear-all		Clean both data files and cache."
