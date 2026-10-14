@@ -18,9 +18,6 @@ train: split
 predict: train
 	python3 -m src.predict
 
-results: predict
-	python3 -m src.result
-
 
 # -- Utilities --------------------------------------------------------------------------------
 
@@ -32,7 +29,7 @@ clear-cache:
 	rm -rf models/*
 	rm -rf logs/*
 	rm -rf results/*
-	
+
 help:
 	@echo "Main targets:"
 	@echo "  data       	Prepare the data directory and download the dataset."
