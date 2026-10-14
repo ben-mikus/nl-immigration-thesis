@@ -2,6 +2,7 @@
 """Generate predictions using the trained forecasting models."""
 
 import logging
+from .utils import build_logger
 
 import joblib
 import numpy as np
@@ -10,7 +11,7 @@ from sklearn.metrics import mean_absolute_error as MAE
 
 from . import config
 
-logger = logging.getLogger(__name__)
+logger = build_logger()
 
 
 models = {
@@ -31,6 +32,7 @@ for model, model_path in models.items():
 
     fh = np.arange(1, config.HOLDOUT_SIZE + 1)
     y_pred = model.predict(fh=fh).squeeze("columns")
+    logger.info("Generated predictions for model '%s'", model_path)
 
 
     ### Evaluate forecast horizons
@@ -53,3 +55,4 @@ for model, model_path in models.items():
         "results/metrics.csv",
         index=False
     )
+    logger.info("Saved evaluation metrics for model '%s' to 'results/metrics.csv'", model_path)

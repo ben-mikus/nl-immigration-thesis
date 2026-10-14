@@ -1,15 +1,16 @@
 # src/train.py
 """Train and save the forecasting models."""
 
-import logging
-import os
 
+import os
 import joblib
 import pandas as pd
 
 from .models import baseline
+from .utils import build_logger
 
-logger = logging.getLogger(__name__)
+
+logger = build_logger()
 
 
 ### Load the training set
@@ -28,4 +29,4 @@ baseline = baseline.train_baseline(y_train)
 
 os.makedirs("models", exist_ok=True)
 joblib.dump(baseline, "models/baseline.pkl")
-logger.info("Fitted baseline AutoREG model saved to models/")
+logger.info("Fitted baseline AutoREG model saved to models/baseline.pkl")

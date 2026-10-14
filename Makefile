@@ -1,5 +1,5 @@
 
-.PHONY: all data get-data baseline clear-data help
+.PHONY: all data get-data baseline clear-data clear-cache clear-all help
 
 
 # -- Main targets -----------------------------------------------------------------------------
@@ -21,14 +21,16 @@ predict: train
 
 # -- Utilities --------------------------------------------------------------------------------
 
-clear-data:
-	rm -f data/raw/*.csv
-	rm -f data/processed/*.csv
+clear-all: clear-cache clear-data
 
 clear-cache:
 	rm -rf models/*
 	rm -rf logs/*
 	rm -rf results/*
+
+clear-data:
+	rm -f data/raw/*.csv
+	rm -f data/processed/*.csv
 
 help:
 	@echo "Main targets:"
@@ -39,6 +41,7 @@ help:
 	@echo "  results		Evaluate and display the forecasting results."
 
 	@echo "Utilities:"
-	@echo "clear-data		Remove downloaded data files."
+	@echo "clear-all		Clean both data files and cache."
 	@echo "clear-cache		Clean models/, logs/, and results/ subdirectories."
+	@echo "clear-data		Remove downloaded data files."
 	@echo "help				Show this help message."
