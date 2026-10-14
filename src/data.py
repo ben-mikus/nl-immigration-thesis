@@ -2,7 +2,7 @@
 """
 Ingests and preprocess the immigration data.
 
-Current: Simply converts the "Period" column to a pandas PeriodIndex
+Current: Ingests the raw immigration data from GitHub
 
 Planned: Handle missing values and multiple countries
 """
@@ -29,7 +29,6 @@ logger.info("Saved (%d rows) to data/raw/data.csv", len(data))
 
 ### Preprocess the data and save in processed/
 
-logger.info("Preprocessing data")
 data["Period"] = pd.PeriodIndex(
     pd.to_datetime(data["Period"].astype(str), format="%Y%m"),
     freq="M"

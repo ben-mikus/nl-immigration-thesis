@@ -1,0 +1,26 @@
+# src/split.py
+"""Splits the preprocessed immigration data into train/test sets."""
+
+import pandas as pd
+
+from . import config
+
+data = pd.read_csv("data/processed/data.csv")
+
+
+### Prepare target series (CSV files do not preserve pandas index types)
+
+data["Period"] = pd.PeriodIndex(data["Period"], freq="M")
+y = data.set_index("Period").sort_index()["Immigration"]
+
+
+### Reserve final holdout
+
+y_train = y.iloc[:-config.HOLDOUT_SIZE]
+y_test = y.iloc[-config.HOLDOUT_SIZE:]
+
+
+### Save the splits to processed/
+
+y_train.to_csv("data/processed/train.csv")
+y_test.to_csv("data/processed/test.csv")
