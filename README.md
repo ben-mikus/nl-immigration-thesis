@@ -1,95 +1,120 @@
-# RS:R&MD portfolio
+# Forecasting Intra-EU Migration to the Netherlands
 
-Your portfolio for **Reproducibility & Model Deployment**. One repository that
-grows over seven weeks into a small, complete, reproducible project.
 
-> **Delete this file's contents when you make the project your own.** What
-> replaces it is your README: what your project does, how to run it, and what
-> you learned. It is the first thing we read when grading.
+Demographic change, including migration, has important implications for the planning of Dutch housing, infrastructure, and public services. Anticipating short-term migration flows can therefore keep policymakers and business owners informed and support broader planning. This project aims to support said motivation by forecasting total monthly immigration from selected European Union (EU) countries to the Netherlands using migration history and macroeconomic conditions.
 
----
+## Methodology
 
-## Start here
+The pipeline downloads a monthly migration dataset, reserves the latest six
+months as a holdout set, and fits an autoregressive baseline model to the
+remaining observations. It produces forecasts and reports mean absolute error
+(MAE) at one-, three-, and six-month horizons.
 
-```bash
-python -m scripts.portfolio_check.check
+The current baseline uses Polish immigration data and an AutoREG model. The
+planned work will compare statistical and machine-learning models, add selected
+origin- and destination-country economic indicators, and examine results across
+Dutch business-cycle conditions. See [reports/](reports/) for the literature
+review and the planned methodology documentation.
+
+## Project Status
+
+The baseline pipeline is complete: it downloads data, creates a train/holdout
+split, trains an AutoREG model, and writes evaluation metrics. The supplied
+dataset covers monthly Polish immigration from January 2010 through December
+2025.
+
+The broader implementation is in progress. Additional countries, multivariate
+features, model comparisons, business-cycle analysis, tests, and the Streamlit
+deployment are planned but not yet implemented.
+
+## Repository Structure
+
+```text
+u142701-capstone
+├── data/                 Downloaded and generated datasets
+│   ├── raw/              Downloaded source CSV files
+│   ├── processed/        Prepared data plus train/holdout splits
+│   └── README.md         Dataset coverage, sources, and limitations
+├── deployment/           Planned Streamlit application
+├── keys/                 
+├── logs/                 Pipeline logs
+├── models/               Trained model artifacts
+├── notebooks/            Exploratory analysis notebooks
+├── reports/              Literature review and planned methodology reports
+├── results/              Forecast evaluation outputs
+├── scripts/              Supporting shell scripts
+├── src/                  Forecasting pipeline source code
+│   ├── config.py         Forecast horizons and baseline model settings
+│   ├── data.py           Downloads and prepares the source dataset
+│   ├── split.py          Creates training and holdout time-series splits
+│   ├── train.py          Fits and saves the forecasting model
+│   ├── predict.py        Generates forecasts and calculates MAE metrics
+│   ├── utils.py          Shared logging utilities
+│   └── models/
+│       └── baseline.py   Defines the AutoREG baseline model
+├── tests/                Automated tests (planned)
+├── Makefile              Pipeline and cleanup commands
+└── requirements.txt      Pinned Python dependencies
 ```
 
-That is the course's code checking tool: it tells you how far your repository has
-progressed on the *essentials*, and what to do about each component. Not the easiest
-command to remember, so week 2 we'll teach you how to shorthand to `make check`
-instead. If you run it, you may notice almost everything is failing. Each
-failure tells you the next concrete step.
+## How to run
 
-Run it whenever you like. It writes a small report to `reports/checks/`, and
-**you commit that report along with your work**. Those committed reports are the
-record of your progress: they are timestamped by git, and we read them at
-grading time.
-
-## The weekly portfolio flow
-
-Every week: lecture → practical → you extend this repo → you write
-`reports/weekXX.md` → run the checker → commit and push. Lectures are on
-Wednesdays, and each week's report is due the following **Wednesday at 08:00**.
-
-| Week | Topic | What is added to the repo |
-| --- | --- | --- |
-| 1 | Git & project scaffold | `.gitignore`, your SSH key, `README`, `reports/week01.md`. |
-| 2 | Bash, Make & Ruff | A script of your own, a `make` target, style checks passing. |
-| 3 | Testing, debugging & OOP | Real tests under `tests/`, code organised into modules. |
-| 4 | Environments & Docker | Pinned dependencies, a working `Dockerfile`, peer feedback. |
-| 5 | Data ingestion & classification | Documented data source, a pipeline that runs end to end. |
-| 6 | Web deployment & serving | A small app in `deployment/`. |
-| 7 | Polish & submission | A `v1.0-final` tag, final reflection, all gates passing. |
-
-## What's up with these gates and checks?
-
-Eleven checks are **gate criteria**: they describe the *minimum* shape of a
-reproducible project. It runs, it's tested, it can be rebuilt, it keeps
-a record, and it doesn't leak data. Don't worry: each one is something the course
-explicitly teaches. The checker marks them `(gate)`. To run only those, exactly as
-they will be checked for your final submission, add `--gate --slow` to the command:
+Begin by cloning the repository to your machine:
 
 ```bash
-python -m scripts.portfolio_check.check --gate --slow
+git clone https://gitlab.uvt.nl/u1427011/u142701-capstone.git u142701
+cd u142701
 ```
 
-`--slow` includes the two checks that take minutes rather than seconds. One of
-them (`make all`) is a gate criterion, so leave it in for a complete check.
-Turning that command into a `make gate` target is a week-2 exercise.
+If you are viewing this repository from GitHub, clone with:
 
-The other checks indicate what we consider to be a *complete* portfolio, and you are
-strongly advised to clear those as well. They count toward your grade too. However,
-note that nothing stops you from submitting with uncleared checks, and if one is
-still red at the end we check it by hand before it costs you anything.
+```bash
+git clone https://github.com/ben-mikus/nl-immigration-thesis.git u142701
+cd u142701
+```
 
-**Doing the Capstone alongside this course?** These nine are also required to pass
-your baseline implementation at the Midterm Review. Not blocking here; blocking
-there.
+On a new Ubuntu or WSL installation, install the required tools:
 
-## Two important rules to remember
+```bash
+sudo apt update
+sudo apt install -y git make python3 python3-venv python3-pip
+```
 
-**Raw data does not go in git.** You'll write a `.gitignore` in week 1 that keeps
-`data/` out (except its README).
+Create and activate a virtual environment:
 
-**Your public SSH key goes in `keys/`.** Commit `keys/<your-u-number>.pub`. That's
-the key ending in `.pub`, never the one without it. We collect these to give you
-GPU4EDU access. Our checker validates yours the moment you commit it. See
-`keys/README.md`.
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
-## What is in the repository template?
+Install the pinned project dependencies:
 
-| Path | What it is |
+```bash
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+Then, the complete pipeline can reproduced form the repositoy root with:
+
+```bash
+make all
+```
+
+`make all` downloads the source dataset, creates the train/holdout split,
+trains the baseline model, and writes metrics to `results/metrics.csv`.
+
+## Available Commands
+
+The `Makefile` provides shortcuts for common tasks, many of which make up `make all`. Run these from Ubuntu/WSL with the virtual environment activated to explore different parts of the pipeline. Run `make help` to view this table in your terminal.
+
+| Command | Description |
 | --- | --- |
-| `src/` | Your code. Empty on purpose; how you organise it is part of the work. |
-| `tests/` | Your tests. |
-| `scripts/` | Shell automation; `portfolio_check/` is the course's checker. Leave it alone! |
-| `reports/` | Weekly reports, and the check reports you commit. |
-| `data/` | Not committed. Only its README is. |
-| `results/` | Model artefacts and metrics. Not committed. |
-| `deployment/` | Your demo app. |
-| `keys/` | Your SSH public key. |
-| `notebooks/` | Optional exploration. Keep the real work in `src/`. |
-| `pyproject.toml` | Your dependencies go here. |
-| `requirements.txt` | An example of a pinned list. Delete it once yours is in `pyproject.toml`. |
-| `CITATION.cff` | How someone cites your work. Fill in the title and your name. |
+| `make all` | Remove generated data and outputs, then run the full pipeline. |
+| `make data` | Download and preprocess the source dataset. |
+| `make split` | Create training and holdout datasets from processed data. |
+| `make train` | Train and save the baseline AutoREG model. |
+| `make predict` | Generate holdout forecasts and write MAE metrics. |
+| `make clear-data` | Remove downloaded raw and processed CSV files. |
+| `make clear-cache` | Remove model, log, and result files. |
+| `make clear-all` | Remove both generated data and cached outputs. |
+| `make help` | Show the available Make targets. |
