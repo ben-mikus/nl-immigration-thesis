@@ -12,6 +12,7 @@ def train_baseline(y_train):
         lags=config.LAGS,
         trend=config.TREND)
 
+    model.set_config(remember_data=False)
     model.fit(y_train)
 
     return model

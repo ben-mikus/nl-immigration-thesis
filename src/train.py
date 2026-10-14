@@ -4,6 +4,7 @@
 
 import os
 import joblib
+import warnings
 import pandas as pd
 
 from .models import baseline
@@ -12,11 +13,23 @@ from .utils import build_logger
 
 logger = build_logger()
 
+warnings.filterwarnings(
+    "ignore",
+    message=r"The default of config .*remember_data.*",
+    category=FutureWarning,
+    module=r"sktime\.forecasting\.base\._base"
+)
+
 
 ### Load the training set
 
-y_train = pd.read_csv("data/processed/train.csv", index_col=0, parse_dates=True)
-y_train.index = pd.to_datetime(y_train.index)
+y_train = pd.read_csv(
+    "data/processed/train.csv",
+    index_col=0,
+    parse_dates=True
+).squeeze("columns")
+
+y_train = y_train.asfreq("MS")
 
 
 # Train the baseline model

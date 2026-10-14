@@ -31,7 +31,7 @@ for model, model_path in models.items():
     ### Generate forecasts
 
     fh = np.arange(1, config.HOLDOUT_SIZE + 1)
-    y_pred = model.predict(fh=fh).squeeze("columns")
+    y_pred = model.predict(fh=fh)
     logger.info("Generated predictions for model '%s'", model_path)
 
 

@@ -4,7 +4,7 @@
 
 # -- Main targets -----------------------------------------------------------------------------
 
-all: clear-data get-data baseline
+all: clear-all data split train predict
 
 data:
 	python3 -m src.data
@@ -34,6 +34,7 @@ clear-data:
 
 help:
 	@echo "Main targets:"
+	@echo "  all        	Run the full pipeline from a fresh cache."
 	@echo "  data       	Prepare the data directory and download the dataset."
 	@echo "  split      	Split the preprocessed data into train/test sets."
 	@echo "  train      	Train the forecasting models."
