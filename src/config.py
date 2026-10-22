@@ -7,7 +7,7 @@ FORECASTING_HORIZONS = [1, 3, 6]
 
 ### Baseline configuration
 LAGS = 18
-HOLDOUT_SIZE = 6
+TEST_SIZE = 60
 
 ### AutoREG settings
 TREND = "c"

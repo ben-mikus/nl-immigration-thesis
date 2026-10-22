@@ -3,13 +3,13 @@
 
 
 import os
-import joblib
 import warnings
+
+import joblib
 import pandas as pd
 
 from .models import baseline
 from .utils import build_logger
-
 
 logger = build_logger()
 
@@ -32,7 +32,7 @@ y_train = pd.read_csv(
 y_train = y_train.asfreq("MS")
 
 
-# Train the baseline model
+### Train the baseline model
 
 logger.info("Training baseline AutoREG model")
 baseline = baseline.train_baseline(y_train)

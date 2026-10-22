@@ -15,14 +15,11 @@ logger = build_logger()
 metrics = pd.read_csv("results/metrics.csv")
 forecasts = pd.read_csv("results/forecasts.csv")
 
-
-### Display MAE table
-
-print("\nForecast accuracy (MAE)")
+print("\nWalk-forward forecast accuracy (MAE)")
 print(metrics.to_string(index=False))
 
 
-### Load the training observations for the historical series
+### Load historical observations
 
 y_train = pd.read_csv(
     "data/processed/train.csv",
@@ -30,10 +27,16 @@ y_train = pd.read_csv(
     parse_dates=True,
 ).squeeze("columns")
 
+y_test = pd.read_csv(
+    "data/processed/test.csv",
+    index_col=0,
+    parse_dates=True,
+).squeeze("columns")
+
 forecasts["period"] = pd.to_datetime(forecasts["period"])
 
-actuals = forecasts.drop_duplicates("period")
 
+### Plot actual versus predicted values by horizon
 
 fig, axes = plt.subplots(
     nrows=len(config.FORECASTING_HORIZONS),
@@ -43,45 +46,63 @@ fig, axes = plt.subplots(
 )
 
 for axis, horizon in zip(axes, config.FORECASTING_HORIZONS):
-    horizon_actuals = actuals.iloc[:horizon]
 
     axis.plot(
         y_train.index,
         y_train,
         marker="o",
         markersize=3,
-        label="Training data",
+        label="Initial training data",
+        color="tab:blue",
     )
 
     axis.plot(
-        horizon_actuals["period"],
-        horizon_actuals["actual"],
+        y_test.index,
+        y_test,
         marker="o",
-        markersize=5,
-        label="Holdout observations",
+        markersize=3,
+        label="Observed immigration",
+        color="tab:orange",
     )
 
-    for model_name, model_forecasts in forecasts.groupby("model"):
-        horizon_forecasts = model_forecasts.iloc[:horizon]
+    # Select all walk-forward predictions for this horizon.
+    horizon_forecasts = forecasts[
+        forecasts["horizon"] == horizon
+    ]
+
+    for model_name, model_forecasts in horizon_forecasts.groupby("model"):
+
+        model_forecasts = model_forecasts.sort_values("period")
 
         axis.plot(
-            horizon_forecasts["period"],
-            horizon_forecasts["prediction"],
+            model_forecasts["period"],
+            model_forecasts["prediction"],
             marker="o",
-            markersize=5,
+            markersize=3,
             label=f"{model_name} prediction",
+            color="tab:green",
         )
 
-    axis.set_title(f"{horizon}-Month-Ahead Forecast")
+    # Display the aggregate MAE for this horizon.
+    horizon_metrics = metrics[metrics["horizon"] == horizon]
+
+    if not horizon_metrics.empty:
+        mae = horizon_metrics.iloc[0]["mae"]
+        axis.set_title(f"{horizon}-Month-Ahead Forecast | MAE: {mae:,.2f}")
+    else:
+        axis.set_title(f"{horizon}-Month-Ahead Forecast")
+
     axis.set_ylabel("Immigration")
     axis.legend()
 
 axes[-1].set_xlabel("Period")
-fig.suptitle("Immigration Forecasts by Horizon", fontsize=14)
+
+fig.suptitle("Walk-Forward Immigration Forecasts by Horizon", fontsize=14)
 plt.tight_layout()
 
 plt.savefig("results/forecast_comparison_by_horizon.png")
+
 logger.info(
-    "Saved forecast comparison charts to "
+    "Saved walk-forward forecast comparison charts to "
     "results/forecast_comparison_by_horizon.png"
 )

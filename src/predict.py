@@ -1,83 +1,111 @@
 ### src/predict.py
-"""Generate predictions using the trained forecasting models."""
+"""Generate expanding-window walk-forward forecasts using trained forecasting models."""
 
 import os
-import joblib
+import warnings
+
 import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_absolute_error as MAE
 
 from . import config
+from .models.baseline import train_baseline
 from .utils import build_logger
 
 logger = build_logger()
 
 
-### Load test observations
-
-y_test = pd.read_csv(
-    "data/processed/test.csv",
-    index_col=0,
-    parse_dates=True
-).squeeze("columns")
 
 
-### Loop through the trained models, evaluating each against the forecast horizons
+### Load training and test observations
+    
+def load_series(path):
+    return pd.read_csv(
+        path,
+        index_col=0,
+        parse_dates=True
+    ).squeeze("columns").asfreq("MS")
 
-models = {
-    "baseline": "models/baseline.pkl"
-}
+y_train = load_series("data/processed/train.csv")
+y_test = load_series("data/processed/test.csv")
 
+
+### Perform expanding-window walk-forward validation
+
+history = y_train.copy()
 all_forecasts = []
-all_metrics = []
 
-for model_name, model_path in models.items():
-    model = joblib.load(model_path)
+for i in range(len(y_test)):
 
-    fh = np.arange(1, config.HOLDOUT_SIZE + 1)
-    y_pred = model.predict(fh=fh)
-    actual = y_test.to_numpy(dtype=float)
-    logger.info("Generated predictions for model '%s'", model_name)
+    ### (with FutrueWarnings surpressed)
 
-
-    forecast_results = pd.DataFrame(
-        {
-            "model": model_name,
-            "period": y_test.index.astype(str),
-            "actual": actual,
-            "prediction": y_pred
-        }
+    warnings.filterwarnings(
+        "ignore",
+        message=r"The default of config .*remember_data.*",
+        category=FutureWarning,
+        module=r"sktime\.forecasting\.base\._base"
     )
-    forecast_results["absolute error"] = (
-        np.abs(forecast_results["prediction"] - forecast_results["actual"])
+
+
+    # Fit AutoREG on all observations available at this origin.
+
+    model = train_baseline(history)
+
+
+    # Forecast up to the longest horizon.
+
+    max_horizon = max(config.FORECASTING_HORIZONS)
+    predictions = model.predict(
+        fh=np.arange(1, max_horizon + 1)
     )
-    all_forecasts.append(forecast_results)
+
 
     for horizon in config.FORECASTING_HORIZONS:
-        all_metrics.append(
-            {
-                "model": model_name,
-                "horizon": horizon,
-                "mae": MAE(
-                    y_test.iloc[:horizon],
-                    y_pred[:horizon]
-                )
-            }
-        )
+
+        # Only evaluate forecasts with known actual values.
+
+        target_idx = i + horizon - 1
+
+        if target_idx >= len(y_test):
+            continue
+
+        actual = float(y_test.iloc[target_idx])
+        prediction = float(predictions.iloc[horizon - 1])
+
+        all_forecasts.append({
+            "model": "baseline",
+            "origin": str(history.index[-1]),
+            "period": str(y_test.index[target_idx]),
+            "horizon": horizon,
+            "actual": actual,
+            "prediction": prediction,
+            "absolute error": abs(actual - prediction)
+        })
 
 
-### Save evaluation metrics
+    # Expand the training window by one observed month.
+
+    history = pd.concat([history, y_test.iloc[i:i+1]])
+
+
+### Calculate aggregate MAE by forecast horizon
+
+forecasts = pd.DataFrame(all_forecasts)
+
+metrics = (
+    forecasts.groupby(["model", "horizon"])
+    .agg(
+        mae=("absolute error", "mean"),
+        n_forecasts=("absolute error", "size")
+    )
+    .reset_index()
+)
+
+
+### Save forecasts and evaluation metrics
 
 os.makedirs("results", exist_ok=True)
 
-pd.concat(all_forecasts, ignore_index=True).to_csv(
-    "results/forecasts.csv",
-    index=False
-)
-logger.info("Saved forecasts for all models to 'results/forecasts.csv'")
+forecasts.to_csv("results/forecasts.csv", index=False)
+metrics.to_csv("results/metrics.csv", index=False)
 
-pd.DataFrame(all_metrics).to_csv(
-    "results/metrics.csv",
-    index=False
-)
-logger.info("Saved evaluation metrics for all models to 'results/metrics.csv'")
+logger.info("Saved walk-forward forecasts and aggregate MAE")

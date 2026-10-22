@@ -6,7 +6,6 @@ import pandas as pd
 from . import config
 from .utils import build_logger
 
-
 logger = build_logger()
 
 
@@ -21,8 +20,8 @@ y = data.set_index("Period").sort_index()["Immigration"]
 
 ### Reserve final holdout
 
-y_train = y.iloc[:-config.HOLDOUT_SIZE]
-y_test = y.iloc[-config.HOLDOUT_SIZE:]
+y_train = y.iloc[:-config.TEST_SIZE]
+y_test = y.iloc[-config.TEST_SIZE:]
 
 
 ### Save the splits to processed/
