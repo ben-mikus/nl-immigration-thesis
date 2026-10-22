@@ -18,16 +18,23 @@ data["Period"] = pd.PeriodIndex(data["Period"], freq="M")
 y = data.set_index("Period").sort_index()["Immigration"]
 
 
-### Reserve final holdout
+### Safety: Ensure observations are chronologically ordered within each country
 
-y_train = y.iloc[:-config.TEST_SIZE]
-y_test = y.iloc[-config.TEST_SIZE:]
+data = data.sort_values(["Country", "Period"])
+
+
+### Reserve the test set observations for each country
+
+test_rows = data.groupby("Country").cumcount(ascending=False) < config.TEST_SIZE
+
+y_train = data.loc[~test_rows].copy()
+y_test = data.loc[test_rows].copy()
 
 
 ### Save the splits to processed/
 
-y_train.to_csv("data/processed/train.csv")
-y_test.to_csv("data/processed/test.csv")
+y_train.to_csv("data/processed/train.csv", index=False)
+y_test.to_csv("data/processed/test.csv", index=False)
 
 logger.info("Saved training split (%d rows) to data/processed/train.csv", len(y_train))
 logger.info("Saved test split (%d rows) to data/processed/test.csv", len(y_test))

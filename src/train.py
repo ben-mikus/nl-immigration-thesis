@@ -23,23 +23,33 @@ warnings.filterwarnings(
 
 ### Load the training set
 
-y_train = pd.read_csv(
-    "data/processed/train.csv",
-    index_col=0,
-    parse_dates=True
-).squeeze("columns")
-
-y_train = y_train.asfreq("MS")
+train = pd.read_csv("data/processed/train.csv")
+train["Period"] = pd.to_datetime(train["Period"])
 
 
-### Train the baseline model
-
-logger.info("Training baseline AutoREG model")
-baseline = baseline.train_baseline(y_train)
-
-
-### Save the trained models
+### Train a spearate model for each country
 
 os.makedirs("models", exist_ok=True)
-joblib.dump(baseline, "models/baseline.pkl")
-logger.info("Fitted baseline AutoREG model saved to models/baseline.pkl")
+
+for country, country_data in train.groupby("Country"):
+
+    ### Extract the country's immigration time series
+
+    y_train = (
+        country_data
+        .sort_values("Period")
+        .set_index("Period")["Immigration"]
+        .asfreq("MS")
+    )
+
+
+    ### Fit the existing AutoREG baseline.
+
+    model = baseline.train_baseline(y_train)
+
+
+    ### Save the fitted model separately for each country
+
+    model_path = f"models/baseline_{country}.pkl"
+    joblib.dump(model, model_path)
+    logger.info(f"Fitted baseline AutoREG model for {country} saved to {model_path}")
