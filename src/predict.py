@@ -3,12 +3,15 @@
 
 import os
 import warnings
+from statsmodels.tools.sm_exceptions import EstimationWarning
 
 import numpy as np
 import pandas as pd
 
 from . import config
 from .models.baseline import train_baseline
+from .models.sarimax import train_sarimax
+from sklearn.preprocessing import StandardScaler
 from .utils import build_logger
 
 logger = build_logger()
@@ -22,35 +25,74 @@ test = pd.read_csv("data/processed/test.csv")
 train["Period"] = pd.to_datetime(train["Period"])
 test["Period"] = pd.to_datetime(test["Period"])
 
+exog_columns = [
+    column
+    for column in train.columns
+    if column not in ["Country", "Period", "Immigration"]
+]
 
-### Perform expanding-window walk-forward validation for each country
+
+### Country Loop: Perform expanding-window walk-forward validation for each country
 
 all_forecasts = []
 
 for country, country_train in train.groupby("Country"):
 
-    y_train = (
+    country_train = (
         country_train
         .sort_values("Period")
-        .set_index("Period")["Immigration"]
+        .set_index("Period")
         .asfreq("MS")
     )
 
-    y_test = (
-        test[test["Country"] == country]
+    country_test = (
+        test.loc[test["Country"] == country]
         .sort_values("Period")
-        .set_index("Period")["Immigration"]
+        .set_index("Period")
         .asfreq("MS")
     )
+
+    y_train = country_train["Immigration"]
+    y_test = country_test["Immigration"]
+
+    X_train = country_train[exog_columns].apply(
+        pd.to_numeric, errors="raise"
+    )
+    X_test = country_test[exog_columns].apply(
+        pd.to_numeric, errors="raise"
+    )
+
+    scaler = StandardScaler()
+    scaler.fit(X_train)
+
+    start_params = None
+
+
+    ### Loop configuration
 
     history = y_train.copy()
+    X_history = X_train.copy()
+
+    max_horizon = max(config.FORECASTING_HORIZONS)
+    fh = np.arange(1, max_horizon + 1)
 
     logger.info(f"Generating historical forecasts for {country}")
 
+
+    ### Model Loop: Perform the forecasting loop for each model
     
     for i in range(len(y_test)):
 
-        ### (with FutrueWarnings surpressed)
+        logger.info(
+            "%s | Origin %d/%d | Training through %s | %d observations",
+            country,
+            i + 1,
+            len(y_test),
+            history.index[-1].strftime("%Y-%m"),
+            len(history),
+        )
+
+        ### (with FutureWarnings surpressed)
 
         warnings.filterwarnings(
             "ignore",
@@ -58,43 +100,114 @@ for country, country_train in train.groupby("Country"):
             category=FutureWarning,
             module=r"sktime\.forecasting\.base\._base"
         )
-
-        ### Fit AutoREG on all observations available at this origin.
-
-        model = train_baseline(history)
-
-        max_horizon = max(config.FORECASTING_HORIZONS)
-        predictions = model.predict(
-            fh=np.arange(1, max_horizon + 1)
+        warnings.filterwarnings(
+            "ignore",
+            category=EstimationWarning,
+            module=r"statsmodels"
         )
 
-        for horizon in config.FORECASTING_HORIZONS:
+        X_history_scaled = pd.DataFrame(
+            scaler.transform(X_history),
+            index=X_history.index,
+            columns=X_history.columns,
+        )
 
-            ### Only evaluate forecasts with known actual values.
+        baseline_model = train_baseline(history)
 
-            target_idx = i + horizon - 1
+        sarimax_model = train_sarimax(
+            history,
+            X_history_scaled,
+            start_params=start_params
+        )
 
-            if target_idx >= len(y_test):
-                continue
+        sarimax_results = sarimax_model._fitted_forecaster
 
-            actual = float(y_test.iloc[target_idx])
-            prediction = float(predictions.iloc[horizon - 1])
+        if sarimax_results.mle_retvals.get("converged", False):
+            start_params = sarimax_results.params
+        else:
+            logger.warning(
+                "SARIMAX did not converge for %s at origin %s",
+                country,
+                i + 1
+            )
 
-            all_forecasts.append({
-                "country": country,
-                "model": "baseline",
-                "origin": str(history.index[-1]),
-                "period": str(y_test.index[target_idx]),
-                "horizon": horizon,
-                "actual": actual,
-                "prediction": prediction,
-                "absolute error": abs(actual - prediction)
-            })
+        fitted_models = {
+            "baseline": baseline_model,
+            "sarimax": sarimax_model,
+        }
 
 
+        ### Repeat the latest known predictors across future months
+
+        future_index = pd.date_range(
+            start=history.index[-1] + pd.offsets.MonthBegin(1),
+            periods=max_horizon,
+            freq="MS",
+        )
+
+        X_future = pd.DataFrame(
+            np.repeat(
+                X_history.iloc[[-1]].to_numpy(),
+                repeats=max_horizon,
+                axis=0,
+            ),
+            index=future_index,
+            columns=exog_columns,
+        )
+
+        X_future_scaled = pd.DataFrame(
+            scaler.transform(X_future),
+            index=X_future.index,
+            columns=X_future.columns,
+        )
+
+        predictions_by_model = {
+            "baseline": fitted_models["baseline"].predict(fh=fh),
+            "sarimax": fitted_models["sarimax"].predict(
+                fh=fh,
+                X=X_future_scaled,
+            ),
+        }
+
+
+        ### Record forecasts whose target observations are available
+
+        for model_name, predictions in predictions_by_model.items():
+
+            for horizon in config.FORECASTING_HORIZONS:
+
+                target_idx = i + horizon - 1
+
+                if target_idx >= len(y_test):
+                    continue
+
+                actual = float(y_test.iloc[target_idx])
+                prediction = float(predictions.iloc[horizon - 1])
+
+                all_forecasts.append({
+                    "country": country,
+                    "model": model_name,
+                    "origin": str(history.index[-1]),
+                    "period": str(y_test.index[target_idx]),
+                    "horizon": horizon,
+                    "actual": actual,
+                    "prediction": prediction,
+                    "absolute error": abs(actual - prediction),
+                })
+
+    
         ### Expand the training window by one observed month.
 
-        history = pd.concat([history, y_test.iloc[i:i+1]])
+        history = pd.concat([
+            history,
+            y_test.iloc[i:i + 1],
+        ])
+
+        X_history = pd.concat([
+            X_history,
+            X_test.iloc[i:i + 1],
+        ])
+
 
 ### Calculate aggregate MAE for each country by forecast horizon
 
@@ -103,7 +216,7 @@ forecasts = pd.DataFrame(all_forecasts)
 metrics = (
     forecasts.groupby(["country", "model", "horizon"])
     .agg(
-        mae=("absolute error", "mean"),
+        mae=("absolute error", lambda x: round(x.mean(), 2)),
         n_forecasts=("absolute error", "size")
     )
     .reset_index()

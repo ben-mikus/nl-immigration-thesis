@@ -4,11 +4,11 @@
 
 import os
 import warnings
-
 import joblib
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
-from .models import baseline
+from .models import baseline, sarimax
 from .utils import build_logger
 
 logger = build_logger()
@@ -26,6 +26,12 @@ warnings.filterwarnings(
 train = pd.read_csv("data/processed/train.csv")
 train["Period"] = pd.to_datetime(train["Period"])
 
+exog_columns = [
+    column
+    for column in train.columns
+    if column not in ["Country", "Period", "Immigration"]
+]
+
 
 ### Train a spearate model for each country
 
@@ -33,23 +39,55 @@ os.makedirs("models", exist_ok=True)
 
 for country, country_data in train.groupby("Country"):
 
-    ### Extract the country's immigration time series
+    ### Prepare a shared monthly index for target and predictors:
 
-    y_train = (
+    country_data = (
         country_data
         .sort_values("Period")
-        .set_index("Period")["Immigration"]
+        .set_index("Period")
         .asfreq("MS")
     )
 
+    y_train = country_data["Immigration"]
+    X_train = country_data[exog_columns]
 
-    ### Fit the existing AutoREG baseline.
+
+    ### Fit and save the AutoREG baseline for each country
 
     model = baseline.train_baseline(y_train)
-
-
-    ### Save the fitted model separately for each country
 
     model_path = f"models/baseline_{country}.pkl"
     joblib.dump(model, model_path)
     logger.info(f"Fitted baseline AutoREG model for {country} saved to {model_path}")
+
+
+    ### Scale predictors using this country's training data
+
+X_train = X_train.apply(pd.to_numeric, errors="raise")
+
+scaler = StandardScaler()
+
+X_train_scaled = pd.DataFrame(
+    scaler.fit_transform(X_train),
+    index=X_train.index,
+    columns=X_train.columns,
+)
+
+### Fit and save SARIMAX with its preprocessing information
+
+model = sarimax.train_sarimax(y_train, X_train_scaled)
+
+artifact = {
+    "model": model,
+    "scaler": scaler,
+    "exog_columns": exog_columns,
+}
+
+model_path = f"models/sarimax_{country}.pkl"
+joblib.dump(artifact, model_path)
+
+logger.info(
+    "Saved SARIMAX model and scaler for %s to %s",
+    country,
+    model_path,
+)

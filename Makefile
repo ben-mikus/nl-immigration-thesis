@@ -15,10 +15,10 @@ split: data
 train: split
 	python3 -m src.train
 
-predict: train
+predict:
 	python3 -m src.predict
 
-results: predict
+results:
 	python3 -m src.results
 
 
