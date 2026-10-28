@@ -8,7 +8,8 @@ import joblib
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-from .models import baseline, dynamic, auto_fourier
+from . import config
+from .models import baseline, dynamic, auto_fourier, random_forest
 from .utils import build_logger
 
 logger = build_logger()
@@ -110,3 +111,28 @@ for country, country_data in train.groupby("Country"):
     model_path = f"models/arx_fourier_{country}.pkl"
     joblib.dump(artifact, model_path)
     logger.info(f"Fitted ARX with Fourier terms model for {country} saved to {model_path}")
+
+
+    ### Fit and save Random Forest model for each country
+
+    rf_features = random_forest.make_features(y_train, X_train)
+
+    first_row = max(config.RF_LAGS)
+
+    rf_X_train = rf_features.iloc[first_row:]
+    rf_y_train = y_train.iloc[first_row:]
+
+    rf_model = random_forest.train_random_forest(
+        rf_y_train,
+        rf_X_train,
+    )
+
+    artifact = {
+        "model": rf_model,
+        "scaler": scaler,
+        "exog_columns": exog_columns,
+    }
+
+    model_path = f"models/random_forest_{country}.pkl"
+    joblib.dump(artifact, model_path)
+    logger.info(f"Fitted Random Forest model for {country} saved to {model_path}")

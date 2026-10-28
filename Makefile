@@ -18,7 +18,7 @@ train: split
 predict:
 	python3 -m src.predict
 
-results: predict
+results:
 	python3 -m src.results
 
 

@@ -12,6 +12,7 @@ from . import config
 from .models.baseline import train_baseline
 # from .models.dynamic import train_dynamic
 from .models.auto_fourier import train_arx_fourier
+from .models.random_forest import train_random_forest, make_features
 from sklearn.preprocessing import StandardScaler
 from .utils import build_logger
 
@@ -122,13 +123,6 @@ for country, country_train in train.groupby("Country"):
 
         # dynamic_results = dynamic_model
 
-        arx_model = train_arx_fourier(
-            history,
-            X_history_scaled,
-            lags=2,
-            fourier_order=3,
-        )
-
         # if dynamic_results.mle_retvals.get("converged", False):
         #     start_params = dynamic_results.params
         # else:
@@ -142,6 +136,28 @@ for country, country_train in train.groupby("Country"):
         #     "baseline": baseline_model,
         #     "dynamic": dynamic_model,
         # }
+
+        arx_model = train_arx_fourier(
+            history,
+            X_history_scaled,
+            lags=2,
+            fourier_order=3,
+        )
+
+        ### Prepare Random Forest training observations
+
+        rf_features = make_features(history, X_history)
+
+        # Initial observations do not have all requested lag values.
+        first_row = max(config.RF_LAGS)
+
+        rf_X_train = rf_features.iloc[first_row:]
+        rf_y_train = history.iloc[first_row:]
+
+        rf_model = train_random_forest(
+            rf_y_train,
+            rf_X_train,
+        )
 
 
         ### Repeat the latest known predictors across future months
@@ -194,9 +210,40 @@ for country, country_train in train.groupby("Country"):
             exog_oos=X_future_scaled,
         )
 
+    ### Generate recursive Random Forest forecasts
+
+        rf_history = history.copy()
+        rf_predictions = []
+
+        for period in future_index:
+
+            # Add the month being forecast without supplying its actual value.
+            rf_history.loc[period] = np.nan
+
+            rf_X_future = make_features(
+                rf_history,
+                X_future.loc[[period]],
+            )
+
+            prediction = float(
+                rf_model.predict(rf_X_future)[0]
+            )
+
+            rf_predictions.append(prediction)
+
+            # Subsequent forecasts use this prediction as lagged immigration.
+            rf_history.loc[period] = prediction
+
+        rf_predictions = pd.Series(
+            rf_predictions,
+            index=future_index,
+            name="prediction",
+        )
+
         predictions_by_model = {
             "baseline": baseline_model.predict(fh=fh),
             "arx_fourier": arx_predictions,
+            "random_forest": rf_predictions,
         }
 
 
