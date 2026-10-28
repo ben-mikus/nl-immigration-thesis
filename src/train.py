@@ -8,7 +8,7 @@ import joblib
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-from .models import baseline, sarimax
+from .models import baseline, dynamic, auto_fourier
 from .utils import build_logger
 
 logger = build_logger()
@@ -63,31 +63,50 @@ for country, country_data in train.groupby("Country"):
 
     ### Scale predictors using this country's training data
 
-X_train = X_train.apply(pd.to_numeric, errors="raise")
+    X_train = X_train.apply(pd.to_numeric, errors="raise")
 
-scaler = StandardScaler()
+    scaler = StandardScaler()
 
-X_train_scaled = pd.DataFrame(
-    scaler.fit_transform(X_train),
-    index=X_train.index,
-    columns=X_train.columns,
-)
+    X_train_scaled = pd.DataFrame(
+        scaler.fit_transform(X_train),
+        index=X_train.index,
+        columns=X_train.columns,
+    )
 
-### Fit and save SARIMAX with its preprocessing information
+    # ### Fit and save dynamic model with its preprocessing information
 
-model = sarimax.train_sarimax(y_train, X_train_scaled)
+    # model = dynamic.train_dynamic(y_train, X_train_scaled)
+    
+    # artifact = {
+    #     "model": model,
+    #     "scaler": scaler,
+    #     "exog_columns": exog_columns,
+    # }
 
-artifact = {
-    "model": model,
-    "scaler": scaler,
-    "exog_columns": exog_columns,
-}
+    # model_path = f"models/dynamic_{country}.pkl"
+    # joblib.dump(artifact, model_path)
 
-model_path = f"models/sarimax_{country}.pkl"
-joblib.dump(artifact, model_path)
+    # logger.info(
+    #     "Saved Dynamic Regression model for %s to %s",
+    #     country,
+    #     model_path,
+    # )
 
-logger.info(
-    "Saved SARIMAX model and scaler for %s to %s",
-    country,
-    model_path,
-)
+    ### Fit and save ARX with Fourier terms for each country
+
+    model = auto_fourier.train_arx_fourier(
+        y_train,
+        X_train_scaled,
+        lags=2,
+        fourier_order=3,
+    )
+
+    artifact = {
+        "model": model,
+        "scaler": scaler,
+        "exog_columns": exog_columns,
+    }
+
+    model_path = f"models/arx_fourier_{country}.pkl"
+    joblib.dump(artifact, model_path)
+    logger.info(f"Fitted ARX with Fourier terms model for {country} saved to {model_path}")

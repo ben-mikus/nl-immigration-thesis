@@ -10,7 +10,8 @@ import pandas as pd
 
 from . import config
 from .models.baseline import train_baseline
-from .models.sarimax import train_sarimax
+# from .models.dynamic import train_dynamic
+from .models.auto_fourier import train_arx_fourier
 from sklearn.preprocessing import StandardScaler
 from .utils import build_logger
 
@@ -65,7 +66,7 @@ for country, country_train in train.groupby("Country"):
     scaler = StandardScaler()
     scaler.fit(X_train)
 
-    start_params = None
+    # start_params = None
 
 
     ### Loop configuration
@@ -114,27 +115,33 @@ for country, country_train in train.groupby("Country"):
 
         baseline_model = train_baseline(history)
 
-        sarimax_model = train_sarimax(
+        # dynamic_model, seasonality = train_dynamic(
+        #     history,
+        #     X_history_scaled,
+        # )
+
+        # dynamic_results = dynamic_model
+
+        arx_model = train_arx_fourier(
             history,
             X_history_scaled,
-            start_params=start_params
+            lags=2,
+            fourier_order=3,
         )
 
-        sarimax_results = sarimax_model._fitted_forecaster
+        # if dynamic_results.mle_retvals.get("converged", False):
+        #     start_params = dynamic_results.params
+        # else:
+        #     logger.warning(
+        #         "SARIMAX did not converge for %s at origin %s",
+        #         country,
+        #         i + 1
+        #     )
 
-        if sarimax_results.mle_retvals.get("converged", False):
-            start_params = sarimax_results.params
-        else:
-            logger.warning(
-                "SARIMAX did not converge for %s at origin %s",
-                country,
-                i + 1
-            )
-
-        fitted_models = {
-            "baseline": baseline_model,
-            "sarimax": sarimax_model,
-        }
+        # fitted_models = {
+        #     "baseline": baseline_model,
+        #     "dynamic": dynamic_model,
+        # }
 
 
         ### Repeat the latest known predictors across future months
@@ -161,12 +168,35 @@ for country, country_train in train.groupby("Country"):
             columns=X_future.columns,
         )
 
+        # fourier_future = seasonality.out_of_sample(
+        #     steps=max_horizon,
+        # )
+
+        # future_predictors = pd.concat(
+        #     [X_future_scaled, fourier_future],
+        #     axis=1,
+        # )
+
+        # predictions_by_model = {
+        #     "baseline": fitted_models["baseline"].predict(fh=fh),
+        #     "dynamic": fitted_models["dynamic"].get_forecast(
+        #         steps=max_horizon,
+        #         exog=future_predictors,
+        #     ).predicted_mean,
+        # }
+
+        # The first future observation follows the final history observation.
+        forecast_start = len(history)
+
+        arx_predictions = arx_model.predict(
+            start=forecast_start,
+            end=forecast_start + max_horizon - 1,
+            exog_oos=X_future_scaled,
+        )
+
         predictions_by_model = {
-            "baseline": fitted_models["baseline"].predict(fh=fh),
-            "sarimax": fitted_models["sarimax"].predict(
-                fh=fh,
-                X=X_future_scaled,
-            ),
+            "baseline": baseline_model.predict(fh=fh),
+            "arx_fourier": arx_predictions,
         }
 
 
