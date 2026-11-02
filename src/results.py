@@ -1,5 +1,35 @@
 ### src/results.py
-"""Display forecast results and visualize forecast errors."""
+"""
+src.results presents and visualizes the walk-forward evaluation produced in src.predict. It prints an accuracy table to
+the terminal and creates one figure for each country-model combination that displays the observed versus predicted 
+immigration over all three forecast horizons.
+
+Workflow
+-----
+1. Load the saved evaluation results from src.predict.
+2. Print the walk-forward forecast accuracy table to the terminal.
+3. Load the historical training and test observations.
+4. Loop through each country-model combination:
+    a. Extract the relevant forecasts and metrics.
+    b. Generate a separate figure for each forecast horizon.
+    c. Plot the observed versus predicted immigration values.
+    d. Annotate the plots with the corresponding MAE values.
+    e. Save the figure to the results/ directory.
+
+Notes
+-----
+Historical obersvations are supplied from the original trainging and test datasets produced by src.split. No models are
+refit in this module and no forecasts or metrics are reclalculated.
+
+Each horizon panel combines forecasts from successive origins. For example, the 3-month panel displays predictions made
+three months before their respective target months. All input files are expected to come from the same pipeline run. The
+module does not validate this consistency.
+
+Run from the repository root through ``pythin3 -m src.results`` or ``make results``. Additionally, ``make all`` is an
+option as results is the last step in the consecutive pipeline run by the ``all`` command. Existing figures are over-
+written on each run.
+"""
+
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -10,7 +40,7 @@ from .utils import build_logger
 logger = build_logger()
 
 
-### Load saved evaluation results
+### Load and display the accuracy metrics produced by src.predict in the walk-forward validation
 
 metrics = pd.read_csv("results/metrics.csv")
 forecasts = pd.read_csv("results/forecasts.csv")
@@ -19,7 +49,7 @@ print("\nWalk-forward forecast accuracy (MAE)")
 print(metrics.to_string(index=False))
 
 
-### Load historical observations
+### Load observed immigration and reconstruct dates for the shared time axis
 
 train = pd.read_csv("data/processed/train.csv")
 test = pd.read_csv("data/processed/test.csv")
@@ -29,7 +59,7 @@ test["Period"] = pd.to_datetime(test["Period"])
 forecasts["period"] = pd.to_datetime(forecasts["period"])
 
 
-### Generate a separate figure for each country
+### Generate a separate figure for each country-model combination
 
 for (country, model_name), model_forecasts in forecasts.groupby(
     ["country", "model"]
@@ -107,12 +137,16 @@ for (country, model_name), model_forecasts in forecasts.groupby(
         if not horizon_metrics.empty:
             mae = horizon_metrics.iloc[0]["mae"]
             title += f" | MAE: {mae:,.2f}"
+        axis.set_title(title)
 
         axis.set_title(title)
         axis.set_ylabel("Immigration")
         axis.legend()
 
     axes[-1, 0].set_xlabel("Period")
+
+
+    ### Title and save the completed figure to the results/ directory
 
     fig.suptitle(
         f"Walk-Forward Immigration Forecasts: {country} | {model_name}",
