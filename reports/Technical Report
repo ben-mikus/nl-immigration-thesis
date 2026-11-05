@@ -1,0 +1,34 @@
+# Forecasting Intra-EU Migration to the Netherlands
+
+Data Science and Society  
+Benjamin Mikus
+
+## Abstract
+
+Forecasting immigration can support planning for housing, infrastructure, and public services in the Netherlands. This study examines the effectiveness of statistical and machine learning models in predicting monthly immigration associated with selected European Union countries at one-, three-, and six-month horizons. Using historical immigration records and macroeconomic indicators from origin and destination countries, the research compares autoregressive, seasonal statistical, and Random Forest models. Forecasting accuracy is assessed through chronological walk-forward evaluation using mean absolute error. The study additionally investigates whether economic indicators improve predictive performance and whether forecasting accuracy varies across Dutch business-cycle conditions.
+
+## Introduction
+
+Migration plays an important role in the demographic and economic development of the Netherlands. Immigration contributes to the Dutch labor supply while also influencing demand for housing, infrastructure, and public services. Consequently, anticipating changes in migration flows is valuable for policymakers, municipalities, and businesses seeking to make informed planning decisions (State Commission Demographic Developments 2050, 2024).
+
+However, forecasting migration remains challenging due to the complex relationships between historical migration patterns, economic conditions, and individual migration decisions. This project investigates whether statistical and machine learning models can improve short-term forecasts of monthly immigration associated with selected European Union countries into the Netherlands. Specifically, the project predicts monthly immigration counts at one-, three-, and six-month horizons, rather than individual migration decisions or motives.
+
+Reliable forecasts could support more informed resource allocation and policy preparedness. Nevertheless, inaccurate predictions risk misinforming decisions affecting both migrants and receiving communities. Forecasts must therefore be interpreted with appropriate uncertainty and transparency rather than as definitive estimates of future migration.
+
+The overarching research question is: **To what extent do statistical and machine learning models, supplemented with economic indicators, improve forecasts of monthly immigration associated with selected EU countries into the Netherlands at one-, three-, and six-month horizons, and how does their performance vary across Dutch business-cycle phases?**
+
+Three subquestions examine (1) differences in forecasting accuracy between statistical and machine learning models, (2) performance across favorable and unfavorable economic conditions, and (3) the additional predictive value of origin-country and destination-country economic indicators.
+
+The remainder of this report presents the relevant literature, methodology, experimental results and discussion, followed by conclusions and limitations.
+
+## Literature Review
+
+Recent migration forecasting research demonstrates the potential of machine learning and macroeconomic indicators, although findings remain dependent on the migration context and forecasting methodology.
+
+Carammia et al. (2022) demonstrated that adaptive machine learning models can outperform traditional statistical approaches when forecasting asylum applications, reporting an average relative error of 7% compared with 15.2% for ARIMA in one migration corridor. Similarly, Boss et al. (2024) found that a Random Forest–XGBoost ensemble outperformed statistical benchmarks when forecasting monthly asylum flows into the European Union. However, these findings concern asylum migration and cannot necessarily be generalized to intra-EU migration.
+
+Research examining intra-EU migration provides stronger evidence for the relevance of economic indicators. Landesmann et al. (2015) identified historical migration and wage differentials as important determinants of intra-EU mobility. More recently, Barker and Bijak (2025) demonstrated the forecasting potential of macroeconomic indicators using a mixed-frequency Bayesian model. However, their approach does not directly establish predictive performance for monthly immigration counts.
+
+Within the Dutch context, van Stiphout-Kramer et al. (2024) identified labor demand and business-cycle conditions as important historical drivers of migration, although their analysis does not establish the comparative forecasting accuracy of different models across economic conditions.
+
+Collectively, these studies leave uncertainty regarding the relative performance of statistical and machine learning models for monthly intra-EU immigration into the Netherlands. This project addresses that gap by comparing models across multiple forecasting horizons, examining business-cycle-dependent accuracy, and evaluating the incremental predictive value of macroeconomic indicators. Further discussion of the scientific literature is provided in the repository's Literature Review.
