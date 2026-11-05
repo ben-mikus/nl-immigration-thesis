@@ -111,20 +111,31 @@ for country, country_train in train.groupby("Country"):
     )
     rf_model = rf_artifact["model"]
 
+    ### Avoid parallel worker configuration warnings
+    rf_model.set_params(n_jobs=1)
 
-    ### Initialize the history used for predictions
 
-    history = y_train.copy()
-    X_history = X_train.copy()
+    ### Full economic panel, already adjusted for publication delays
+    X_available = pd.concat([X_train, X_test]).sort_index()
+
+    ### Initial forecast origin: final month of training panel
+    initial_origin = y_train.index[-1]
+
+    ### Immigration history available at the initial origin
+    history = y_train.iloc[:-config.IMMIGRATION_LAG].copy()
+
+    assert baseline_model.model.data.row_labels[-1] == history.index[-1], (
+        "Baseline model and immigration history have different cutoffs."
+    )
 
     max_horizon = max(config.FORECASTING_HORIZONS)
 
-    logger.info(
-        f"Generating fixed-model forecasts for {country}"
-    )
+    ### Forecast additional steps to account for missing
+    ### immigration observations at each origin
+    max_steps = max_horizon + config.IMMIGRATION_LAG
 
 
-    ### Loop through the successive forecast origins, making predictions for every step from one through six
+    ### Loop through the successive forecast origins, making predictions for every step from one through the maximum horizon
     
     for i in range(len(y_test)):
 
@@ -140,16 +151,25 @@ for country, country_train in train.groupby("Country"):
 
         ### [B] Construct future economic inputs for future months on a carry-forward assumption
 
+        # Calendar month at which this forecast is issued
+        forecast_origin = initial_origin + pd.DateOffset(months=i)
+
+        # Latest publication-adjusted economic information
+        latest_X = X_available.loc[forecast_origin]
+
+        # Forecast from the last available immigration observation
         future_index = pd.date_range(
             start=history.index[-1] + pd.offsets.MonthBegin(1),
-            periods=max_horizon,
+            periods=max_steps,
             freq="MS",
         )
 
+        # Carry forward the economic information available
+        # at the forecast origin
         X_future = pd.DataFrame(
             np.repeat(
-                X_history.iloc[[-1]].to_numpy(),
-                repeats=max_horizon,
+                latest_X.to_numpy().reshape(1, -1),
+                repeats=max_steps,
                 axis=0,
             ),
             index=future_index,
@@ -162,9 +182,6 @@ for country, country_train in train.groupby("Country"):
             columns=X_future.columns,
         )
 
-
-        ### (The first future observation follows the final history observation)
-        
         forecast_start = len(history)
 
 
@@ -172,7 +189,7 @@ for country, country_train in train.groupby("Country"):
 
         arx_predictions = arx_model.predict(
             start=forecast_start,
-            end=forecast_start + max_horizon - 1,
+            end=forecast_start + max_steps - 1,
             exog_oos=X_future_scaled,
         )
 
@@ -216,7 +233,7 @@ for country, country_train in train.groupby("Country"):
         predictions_by_model = {
             "baseline": baseline_model.predict(
                 start=forecast_start,
-                end=forecast_start + max_horizon - 1,
+                end=forecast_start + max_steps - 1,
             ),
             "arx_fourier": arx_predictions,
             "random_forest": rf_predictions,
@@ -235,12 +252,17 @@ for country, country_train in train.groupby("Country"):
                     continue
 
                 actual = float(y_test.iloc[target_idx])
-                prediction = float(predictions.iloc[horizon - 1])
+
+                prediction_step = (
+                    horizon + config.IMMIGRATION_LAG - 1
+                )
+
+                prediction = float(predictions.iloc[prediction_step])
 
                 all_forecasts.append({
                     "country": country,
                     "model": model_name,
-                    "origin": str(history.index[-1]),
+                    "origin": str(forecast_origin),
                     "period": str(y_test.index[target_idx]),
                     "horizon": horizon,
                     "actual": actual,
@@ -252,48 +274,68 @@ for country, country_train in train.groupby("Country"):
         
         ### [E] Update model histories without refitting
 
-        ### Skip updating histories after the final forecast origin
         if i == len(y_test) - 1:
             continue
 
-        observed_y = y_test.iloc[i:i + 1]
-        observed_X = X_test.iloc[i:i + 1]
+        # The next forecast origin is one month later.
+        next_origin = forecast_origin + pd.DateOffset(months=1)
 
-        ### Scale the new economic observation
+        # Latest immigration month available at the next origin.
+        available_through = (
+            next_origin
+            - pd.DateOffset(months=config.IMMIGRATION_LAG)
+        )
 
+        # Identify the newly published immigration observation.
+        new_period = history.index[-1] + pd.offsets.MonthBegin(1)
+
+        if new_period > available_through:
+            continue
+
+        # Retrieve the observation from the original target series.
+        if new_period in y_train.index:
+            observed_y = y_train.loc[[new_period]]
+            observed_X = X_train.loc[[new_period]]
+        else:
+            observed_y = y_test.loc[[new_period]]
+            observed_X = X_test.loc[[new_period]]
+
+        # Restore monthly frequency for statsmodels append()
+        monthly_index = pd.date_range(
+            start=new_period,
+            periods=1,
+            freq="MS",
+        )
+
+        observed_y.index = monthly_index
+        observed_X.index = monthly_index
+
+
+        # Scale the corresponding publication-adjusted economics.
         observed_X_scaled = pd.DataFrame(
             scaler.transform(observed_X),
             index=observed_X.index,
             columns=observed_X.columns,
         )
 
-        ### Update AutoREG baseline (coefficients unchanged)
-
+        # Update AutoREG without refitting.
         baseline_model = baseline_model.append(
             observed_y,
             refit=False,
         )
 
-        ### Update AR-X Fourier (coefficients unchanged)
-
+        # Update AR-X without refitting.
         arx_model = arx_model.append(
             observed_y,
             exog=observed_X_scaled,
             refit=False,
         )
 
-        ### Update history for Random Forest features
-
+        # Update Random Forest's immigration history.
         history = pd.concat([
             history,
             observed_y,
         ])
-
-        X_history = pd.concat([
-            X_history,
-            observed_X,
-        ])
-
 
     ### [F] Return to the top of the loop to repeat for the next forecast origin within the current country
 

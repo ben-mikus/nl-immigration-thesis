@@ -2,6 +2,19 @@
 """Configuration settings for the complete forecasting pipeline."""
 
 
+### Data configuration: # Publication delays, expressed in monthly rows
+
+### PUBLICATION LAGS specifies the number of months to shift forward by release frequency
+PUBLICATION_LAGS = {
+    "monthly": 2,
+    "quarterly": 4,
+    "semiannual": 8,
+}
+
+### IMMIGRATION_LAG specifies the number of months to shift forward for immigration observations
+IMMIGRATION_LAG = 1
+APPLY_TRAINING_CUTOFF = True
+
 ### General configuration
 
 FORECASTING_HORIZONS = [1, 3, 6]

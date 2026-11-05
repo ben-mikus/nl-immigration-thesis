@@ -78,6 +78,10 @@ for country, country_data in train.groupby("Country"):
     y_train = country_data["Immigration"]
     X_train = country_data[exog_columns]
 
+    if config.APPLY_TRAINING_CUTOFF:
+        y_train = y_train.iloc[:-config.IMMIGRATION_LAG]
+        X_train = X_train.iloc[:-config.IMMIGRATION_LAG]
+
 
     ### [B] Fit and save the AutoREG baseline for each country
 

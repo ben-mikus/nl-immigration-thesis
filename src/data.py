@@ -27,8 +27,19 @@ import os
 import pandas as pd
 
 from .utils import build_logger
+from . import config
 
 logger = build_logger()
+
+
+### Feature publication frequencies; used for deciding the appropriate shift for each feature
+FEATURE_FREQUENCIES = {
+    "Country-MINWAGE": "semiannual",
+    "NL-MINWAGE": "semiannual",
+    "Country-WAGESAL": "quarterly",
+    "NL-WAGESAL": "quarterly",
+    "NL-CONJCLK": "monthly",
+}
 
 
 ### Download the assembled data from GitHub and save in raw/ before preprocessing
@@ -48,6 +59,65 @@ logger.info("Saved (%d rows) to data/raw/data.csv", len(data))
 data["Period"] = pd.PeriodIndex(
     pd.to_datetime(data["Period"].astype(str), format="%Y%m"),
     freq="M"
+)
+data = data.sort_values(["Country", "Period"])
+
+
+### Validate that all economic indicators have a configured publication lag
+
+economic_columns = set(data.columns) - {
+    "Country", "Period", "Immigration"
+}
+
+unconfigured_features = (
+    economic_columns - set(FEATURE_FREQUENCIES)
+)
+
+if unconfigured_features:
+    raise ValueError(
+        "Economic indicators missing publication-lag "
+        f"configuration: {sorted(unconfigured_features)}"
+    )
+
+
+### Apply publication delays to economic indicators
+
+available_features = []
+
+for feature, frequency in FEATURE_FREQUENCIES.items():
+
+    if feature not in data.columns:
+        logger.warning(
+            "Skipping %s: column not found in dataset",
+            feature,
+        )
+        continue
+
+    lag = config.PUBLICATION_LAGS[frequency]
+
+    data[feature] = (
+        data.groupby("Country")[feature].shift(lag)
+    )
+
+    available_features.append(feature)
+
+    logger.info(
+        "Applied %d-month publication lag to %s",
+        lag,
+        feature,
+    )
+
+
+### Remove initial rows without complete economic histories
+
+rows_before = len(data)
+
+if available_features:
+    data = data.dropna(subset=available_features)
+
+logger.info(
+    "Removed %d rows with unavailable economic histories",
+    rows_before - len(data),
 )
 
 
