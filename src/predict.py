@@ -1,8 +1,8 @@
 ### src/predict.py
 """
 src.predict evalauates the AutoREG baseline, AR-X with Fourier terms, and Random Forest models on an expanding, walk-
-forward window for each country included in the panel data. Models are refit at each successive forecast and predictions
-are collected at each iteration.
+forward window for each country included in the panel data. loaded from artifacts produced by src.train, and predictions
+are generated at successive forecast origins without refitting.
 
 Workflow
 -----
@@ -11,12 +11,11 @@ After loading the training and test panels, evaluation repeats the following ste
 1. Establish monthly target and economic predictor histories and scale the economic predictors using the initial training sample.
 2. Initialize the expanding history for walk-forward validation using the training sample.
 3. Loop through each forecast origin in the test sample, refitting models and generating predictions at each step.
-    a. Refit the models using the current expanding history.
-    b. Construct future economic inputs for the forecast horizons.
-    c. Generate forecasts for the specified horizons using the fitted models.
-    d. Append the forecasts to the collection of all forecasts.
-    e. Update the expanding history with the newly observed data from the test sample.
-    f. Repeat the process for the next forecast origin until the test sample is exhausted.
+    a. Construct future economic inputs for the forecast horizons.
+    b. Generate forecasts for the specified horizons using the fitted models.
+    c. Append the forecasts to the collection of all forecasts.
+    d. Update the expanding history with the newly observed data from the test sample.
+    e. Repeat the process for the next forecast origin until the test sample is exhausted.
 
 After the country loop has completed for all countries in the panel dataset, aggregate MAE values are calculated by 
 country and forecast horizon. Country-level predictions and metrics are then saved to results/ for use in src.results.
@@ -34,18 +33,13 @@ needed and existing CSVs are overwritten.
 
 
 import os
-import warnings
+import joblib
 
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
-from statsmodels.tools.sm_exceptions import EstimationWarning
+from .models.random_forest import make_features
 
 from . import config
-from .models.baseline import train_baseline
-
-from .models.arx_fourier import train_arx_fourier
-from .models.random_forest import make_features, train_random_forest
 from .utils import build_logger
 
 logger = build_logger()
@@ -99,21 +93,35 @@ for country, country_train in train.groupby("Country"):
     )
 
 
-    ### Scale parameters from the initial training sample only; they remain fixed throughout a country's evaluation
+    ### Load the models fitted by src.train
 
-    scaler = StandardScaler()
-    scaler.fit(X_train)
+    baseline_wrapper = joblib.load(
+        f"models/baseline_{country}.pkl"
+    )
+    baseline_model = baseline_wrapper._fitted_forecaster
+
+    arx_artifact = joblib.load(
+        f"models/arx_fourier_{country}.pkl"
+    )
+    arx_model = arx_artifact["model"]
+    scaler = arx_artifact["scaler"]
+
+    rf_artifact = joblib.load(
+        f"models/random_forest_{country}.pkl"
+    )
+    rf_model = rf_artifact["model"]
 
 
-    ### Initialize the expanding history for walk-forward validation
+    ### Initialize the history used for predictions
 
     history = y_train.copy()
     X_history = X_train.copy()
 
     max_horizon = max(config.FORECASTING_HORIZONS)
-    fh = np.arange(1, max_horizon + 1)
 
-    logger.info(f"Generating historical forecasts for {country}")
+    logger.info(
+        f"Generating fixed-model forecasts for {country}"
+    )
 
 
     ### Loop through the successive forecast origins, making predictions for every step from one through six
@@ -127,62 +135,6 @@ for country, country_train in train.groupby("Country"):
             len(y_test),
             history.index[-1].strftime("%Y-%m"),
             len(history),
-        )
-
-        ### (with FutureWarnings and EstimationWarnings surpressed)
-
-        warnings.filterwarnings(
-            "ignore",
-            message=r"The default of config .*remember_data.*",
-            category=FutureWarning,
-            module=r"sktime\.forecasting\.base\._base"
-        )
-        warnings.filterwarnings(
-            "ignore",
-            category=EstimationWarning,
-            module=r"statsmodels"
-        )
-
-
-        ### Refit the models using the current history up to the forecast origin
-
-        X_history_scaled = pd.DataFrame(
-            scaler.transform(X_history),
-            index=X_history.index,
-            columns=X_history.columns,
-        )
-
-
-        ### [A] (Re)fit the baseline model
-
-        baseline_model = train_baseline(history)
-
-
-        ### [A] (Re)fit the ARX model with Fourier terms
-
-        arx_model = train_arx_fourier(
-            history,
-            X_history_scaled,
-            lags=2,
-            fourier_order=3,
-        )
-
-        ### Random Firest features are reconstructed from the expanded history
-
-        rf_features = make_features(history, X_history)
-
-        ### (Initial observations do not have all requested lag values)
-
-        first_row = max(config.RF_LAGS)
-
-        rf_X_train = rf_features.iloc[first_row:]
-        rf_y_train = history.iloc[first_row:]
-
-        ### [A] (Re)fit the Random Forest model
-
-        rf_model = train_random_forest(
-            rf_y_train,
-            rf_X_train,
         )
 
 
@@ -212,6 +164,7 @@ for country, country_train in train.groupby("Country"):
 
 
         ### (The first future observation follows the final history observation)
+        
         forecast_start = len(history)
 
 
@@ -261,7 +214,10 @@ for country, country_train in train.groupby("Country"):
         ### [C] Collect the forecast series from each model
 
         predictions_by_model = {
-            "baseline": baseline_model.predict(fh=fh),
+            "baseline": baseline_model.predict(
+                start=forecast_start,
+                end=forecast_start + max_horizon - 1,
+            ),
             "arx_fourier": arx_predictions,
             "random_forest": rf_predictions,
         }
@@ -293,19 +249,54 @@ for country, country_train in train.groupby("Country"):
                 })
 
     
-        ### [E] Update the expanding training window by one observed month
+        
+        ### [E] Update model histories without refitting
+
+        ### Skip updating histories after the final forecast origin
+        if i == len(y_test) - 1:
+            continue
+
+        observed_y = y_test.iloc[i:i + 1]
+        observed_X = X_test.iloc[i:i + 1]
+
+        ### Scale the new economic observation
+
+        observed_X_scaled = pd.DataFrame(
+            scaler.transform(observed_X),
+            index=observed_X.index,
+            columns=observed_X.columns,
+        )
+
+        ### Update AutoREG baseline (coefficients unchanged)
+
+        baseline_model = baseline_model.append(
+            observed_y,
+            refit=False,
+        )
+
+        ### Update AR-X Fourier (coefficients unchanged)
+
+        arx_model = arx_model.append(
+            observed_y,
+            exog=observed_X_scaled,
+            refit=False,
+        )
+
+        ### Update history for Random Forest features
 
         history = pd.concat([
             history,
-            y_test.iloc[i:i + 1],
+            observed_y,
         ])
 
         X_history = pd.concat([
             X_history,
-            X_test.iloc[i:i + 1],
+            observed_X,
         ])
 
+
     ### [F] Return to the top of the loop to repeat for the next forecast origin within the current country
+
 
 ### Return to the top of the loop to repeat for the next country
 

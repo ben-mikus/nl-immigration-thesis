@@ -35,7 +35,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 from . import config
-from .models import baseline, dhr, random_forest
+from .models import baseline, arx_fourier, random_forest
 from .utils import build_logger
 
 logger = build_logger()
@@ -103,7 +103,7 @@ for country, country_data in train.groupby("Country"):
 
     ### [C] Fit and save ARX with Fourier terms for each country
 
-    model = dhr.train_arx_fourier(
+    model = arx_fourier.train_arx_fourier(
         y_train,
         X_train_scaled,
         lags=2,

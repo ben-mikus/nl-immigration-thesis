@@ -9,10 +9,10 @@ all: clear-all data split train predict results
 data:
 	python3 -m src.data
 
-split: data
+split:
 	python3 -m src.split
 
-train: split
+train:
 	python3 -m src.train
 
 predict:
