@@ -2,194 +2,135 @@
 Forecasting Intra-EU Migration to the Netherlands <br>
 Benjamin Mikus
 
-## 1. Purpose and research strategy
+## 1. Introduction
 
-This Methodology Overview describes the research design for forecasting monthly immigration associated with selected European Union countries into the Netherlands. It explains the data preparation, statistical and machine learning models, and evaluation procedures through which the research questions will be investigated.
+This Methodology Overview describes the research design for forecasting monthly intra-EU migration to the Netherlands. It explains the data preparation, statistical and machine learning models, and evaluation procedures through which the research questions will be investigated.
 
-The literature review identifies evidence that migration history and economic conditions are informative for migration forecasting, while leaving uncertainty about their predictive value for monthly intra-EU immigration into the Netherlands. It also motivates comparing machine learning with statistical benchmarks and examining performance under different Dutch business-cycle conditions. This study will contribute evidence on when additional indicators and model complexity improve forecasting performance, including cases where they do not.
+The [project README](../README.md) provides a general outline of the pipeline as well as instructions for running the pipeline. The project builds on findings from the [literature review](Literature%20Review.md). Details on the dataset can be found in the [dataset README](../data/README.md), and the separate repository used to build the dataset used for this project can be found [here](https://github.com/ben-mikus/nl-immigration-data). The exploratory notebooks in `notebooks/` support key decisions made around feature engineering and model training. The individual modules can be found in `src/` and orchestrated through the corresponding commands in the `Makefile`.
 
-The overarching research question is: **To what extent do statistical and machine learning models, supplemented with economic indicators, improve forecasts of monthly immigration associated with selected EU countries into the Netherlands at one-, three-, and six-month horizons, and how does their performance vary across Dutch business-cycle phases?**
+### Research Question and Strategy
 
-The following subquestions operationalize this question:
+The main research question is:
 
-- **RQ1:** How does the forecasting performance of Random Forest compare with autoregression and SARIMAX when predicting monthly immigration one, three, and six months ahead?
-- **RQ2:** Is MAE greater during unfavorable Dutch business-cycle phases than during favorable phases, and how does relative model performance vary between these phases?
-- **RQ3:** How does adding origin-country and destination-country economic indicators beyond immigration history and Dutch business-cycle conditions affect out-of-sample forecasting accuracy?
+**To what extent do statistical and machine learning models, supplemented with economic indicators, improve forecasts of monthly immigration associated with selected EU countries into the Netherlands at one-, three-, and six-month horizons, and how does their performance vary across Dutch business-cycle phases?**
 
-The initial pipeline is developed using data from Poland and will later be extended
-to additional selected countries. The current Poland dataset is therefore the
-development scope, rather than evidence supporting generalization to all EU
-countries. Pooled cross-country modelling is outside the present design.
+Three subquestions guide the research:
 
-Supporting materials in this repository include the [literature review](Literature%20Review.md), the [project README](../README.md), the [dataset README](../data/README.md), and the exploratory [baseline notebook](../notebooks/baseline.ipynb). The runnable baseline is implemented in `src/` and orchestrated through the `Makefile`. The separate [data-building repository](https://github.com/ben-mikus/nl-immigration-data) documents assembly of the derived input panel.
+- **RQ1**: How does Random Forest compare with Autoregression and AR-X when forecasting immigration one, three, and six months ahead?
+- **RQ2**: Does including economic indicators from the Netherlands and countries of origin improve forecasts beyond immigration history and Dutch business-cycle information?
+- **RQ3**: Are forecasting errors greater during unfavorable Dutch business-cycle conditions, and does model performance differ between favorable and unfavorable periods?
 
-## 2. Pipeline overview and implementation status
+### Pipeline Overview
 
-Figure 1 summarizes the planned pipeline. Model fitting and feature preparation are repeated within each chronological evaluation window.
+### Forecasting Pipeline
+
+Figure 1 shows the five main stages of the forecasting pipeline, which can be executed together using `make all`.
 
 ```mermaid
 flowchart TD
-    A["A. CBS and Eurostat data ingestion"] --> B["B. Validate monthly dataset"]
-    B --> C["C. Define chronological evaluation windows"]
-    C --> D["D. Build available predictors within each window"]
-    D --> E["E1. Autoregression"]
-    D --> F["E2. SARIMAX"]
-    D --> G["E3. Random Forest"]
-    E --> H["F. Matched forecasts at 1, 3, and 6 months"]
-    F --> H
-    G --> H
-    H --> I["G. MAE, model comparisons, and phase error analysis"]
+    A["A. Data Ingestion & Preprocessing"]
+    B["B. Train/Test Split"]
+    C["C. Model Training"]
+    D["D. Walk-Forward Forecasting"]
+    E["E. Results & Visualization"]
+
+    A --> B --> C --> D --> E
 ```
 
-*Figure 1. Planned forecasting and evaluation pipeline.*
+*Figure 1. Overview of the forecasting pipeline.*
 
-The implemented proof of concept is an autoregressive baseline. `src/data.py`, `src/split.py`, `src/train.py`, `src/predict.py`, and `src/results.py` form a runnable pipeline, invoked with `make all`. It downloads the development dataset, reserves the final six months as a holdout set, fits `AutoREG` from `sktime`, reports MAE at one-, three-, and six-month horizons, and saves a forecast comparison chart. SARIMAX, Random Forest, and the wider pipeline described below are planned components, not completed implementations.
+`src/data.py`, `src/split.py`, `src/train.py`, `src/predict.py`, and `src/results.py` together form the runnable pipeline, performing stages A through E, respectively. When the modules are run together, the pipeline begins by downloading the dataset and chronoligically splitting the data into train and test splits, reserving the final 60 months for testing. The models which are trained are `AutoREG` from `sktime`, an AR-X model with Fourier seasonailty built with `AutoREG` and `DeterministicProcess` from `statsmodels`, and `RandomForestRegressor` from `sklearn`. Trained models are saved as `.pkl` files, which are then used to generate one-, three-, and six-month-ahead forecasts through (fixed-model) walk-forward evaluation. Finally, the predictions are evaluated using Mean Absolute Error (MAE) and visualized alongside the observed immigration counts.
 
-## 3. Data sources, access, and scope: stages A and B
+## 2. Dataset Description and Access
 
-### 3.1 Current development dataset
+### Dataset Characteristics
 
-While in development, the current dataset contains metrics between Poland and the Netherlands across 192 monthly observations from January 2010 through December 2025 and eight columns. The current development dataset does not contain missing values or duplicates. 
+The project uses a monthly panel dataset combining immigration statistics and economic information from Statistics Netherlands (CBS). The current dataset covers **Bulgaria, Poland, and Romania** from January 2010 through December 2025. It contains **576 observations and four columns**, with 192 monthly observations per country. The supplied dataset has no missing values or duplicate country-month combinations.
 
-| Column | Role and interpretation | Original frequency |
+| Column | Description | Frequency |
 | --- | --- | --- |
-| `Period` | Observation month encoded as YYYYMM; converted to a monthly date index | Monthly |
-| `Country` | Country identifier; Poland in the development dataset | Identifier |
-| `Immigration` | CBS immigration count for the configured Polish origin/migration-background category; prediction target | Monthly |
-| `Country-MINWAGE` | Polish statutory minimum wage in purchasing-power standards | Semi-Annually |
-| `NL-MINWAGE` | Dutch statutory minimum wage in purchasing-power standards | Semi-Annually |
-| `Country-WAGESAL` | Polish wages-and-salaries Labour Cost Index, seasonally and calendar adjusted, 2020=100 | Quarterly |
-| `NL-WAGESAL` | Corresponding Dutch Labour Cost Index | Quarterly |
-| `NL-CONJCLK` | Dutch Conjunctuurklok business-cycle indicator | Monthly |
+| `Period` | Observation month (`YYYYMM`) | Monthly |
+| `Country` | Country identifier (Bulgaria, Poland, Romania) | *N/A* |
+| `Immigration` | CBS monthly immigration count associated with each country; forecasting target | Monthly |
+| `NL-CONJCLK` | Dutch CBS Conjunctuurklok business-cycle indicator | Monthly |
 
-All eight columns support the workflow. `Period` provides ordering and calendar features; `Country` identifies the series; `Immigration` is the variable to be predicted; the economic indicators represent what the literature review deemed as the most influential explanatory variables in the setting of Intra-EU migration forecasting.
+The Conjunctuurklok indicator represents economic conditions in the Netherlands and is shared across all three countries for each month. The dataset allows immigration patterns and forecasting performance to be examined separately by country.
 
-Minimum wages represent legal minimum wages, not average earnings. The Labour Cost Index measures changes relative to a national reference year, so differences between Polish and Dutch index levels cannot be interpreted as differences in actual wages. Conjunctuurklok measures Dutch business-cycle conditions and encompasses more than GDP growth alone. These distinctions constrain the interpretation of RQ3.
+### Data Sources and Reproducibility
 
-### 3.2 Collection and reproducible access
+The dataset was assembled using a separate [data-building repository](https://github.com/ben-mikus/nl-immigration-data), which documents the source tables, API filters, and data preparation procedures.
 
-The dataset has been produced by a separate repository that combines the CBS
-immigration tables `85484NED` and `83518NED`, Eurostat minimum-wage data
-`earn_mw_cur`, Eurostat wages-and-salaries data `lc_lci_r2_q`, and a downloaded
-CBS Conjunctuurklok file. This repository retrieves the derived panel from
-GitHub through `make data`; its [data README](../data/README.md) records the
-source filters and dataset limitations. Quarterly values are repeated across
-their three constituent months and half-yearly values across six months. This
-aligns frequencies but does not create independent monthly economic
-measurements.
+The underlying data comes from two CBS sources:
 
-The current capstone pipeline makes the derived development panel reproducibly
-available through `make data`. Rebuilding that panel directly from the
-underlying CBS and Eurostat sources remains the responsibility of the separate
-data-building repository.
+- **Immigration:** CBS tables [85484NED](https://opendata.cbs.nl/#/CBS/nl/dataset/85484NED/table) and [83518NED](https://opendata.cbs.nl/#/CBS/nl/dataset/83518NED/table), using monthly immigration counts for the three selected country categories.
+- **Business cycle:** The [CBS Conjunctuurklok dashboard](https://www.cbs.nl/nl-nl/visualisaties/dashboard-economie/conjunctuurklok), downloaded as a CSV file.
 
-The CBS configuration uses origin and migration-background classifications, with birth-country and generation selections. Consequently, the target must not automatically be described as Polish nationality, previous residence in Poland, or labor migration. Before substantive interpretation, source metadata will be checked to establish the precise population measured and comparability across the two CBS tables. Any definition change or overlap will be documented and handled explicitly.
+The data-building process combines these sources into `panel_data.csv`, using the observation month and country as identifiers. The source configurations are documented in the data-building repository's [`config.py`](https://github.com/ben-mikus/nl-immigration-data/blob/main/config.py), while [`settings.py`](https://github.com/ben-mikus/nl-immigration-data/blob/main/settings.py) identifies the selected countries and indicators.
 
-### 3.3 Representativeness and ethical considerations
+The forecasting repository downloads the assembled dataset using `make data`. The module additionally handles preprocessing, standardizing the monthly dates and adjusts the economic indicator for publication delays. Further details are available in the [dataset README](../data/README.md).
 
-The study uses public aggregate statistics, without individual-level records in the supplied panel. Therefore, the principal ethical concerns are measurement, representation, and interpretation. Aggregate forecasts cannot establish individual migration motives or support conclusions about individual demographic groups. Country-associated categories must be reported according to their verified statistical definitions, without attributing predictive associations to intrinsic characteristics of national groups.
+### Representativeness and Ethical Considerations
 
-Furthermore, the Poland development sample cannot represent every EU country, though this will not be a problem as additional countries are processed in the final pipeline. Descriptive statistics and errors will be reported separately by country when the study expands. The supplied panel aggregates sex and does not support sex- or ethnicity-specific error analysis; this limitation will be stated rather than implying that subgroup fairness has been evaluated. Relevant ELSA consultation findings will be incorporated when available.
+The dataset covers three selected EU countries and is not representative of immigration from the EU as a whole. Additionally, differences in CBS origin classifications and the absence of migration motives limit how the results can be interpreted. The dataset does not distinguish between protected demographic categories, such as sex or ethnicity, so subgroup-level fairness cannot be evaluated. Instead, descriptive statistics and forecasting performance will be reported separately for each country.
 
-## 4. Exploratory analysis and preprocessing: stage B
+The use of publicly available, aggregated data limits direct privacy concerns. However, country-specific forecasts may still introduce risks of misinterpretation or stereotyping. These risks will be addressed through neutral reporting and clear communication of the study's limitations. Further discussion of data quality and representativeness is provided in the [dataset README](../data/README.md), while the [ELSA Report](../reports/ELSA%20Report.md) examines the broader ethical, legal, and societal implications.
 
-The exploratory [baseline notebook](../notebooks/baseline.ipynb) examines the
-development data and supports the initial autoregressive specification. The
-results suggest short-term persistence, annual recurrence in immigration,
-changing trends, and country-specific relationships. These observations
-motivate immigration lags, explicit seasonal modeling, chronological
-evaluation, and comparison with a nonlinear model. They do not establish
-causality or prove that any predictor improves forecasts.
 
-Observations will be ordered by country. Neither missing target nor missing economic value observations will be silently filled or treated as zero. Instead, their cause will be investigated and affected evaluation windows documented. Initial rows unavailable because of lag construction will be recorded. Valid extreme immigration observations will be retained, with errors examined during volatile periods.
+## 3. Dataset Cleaning, Preprocessing, Transformation, and Splitting
 
-The primary specification will forecast immigration counts on their original scale. A log-transformed target or selected predictor changes may be considered as validation-only alternatives if updated EDA supports them. Transformation choices will be fixed before final testing, and all forecasts will be evaluated on the original count scale. Full-series STL components will remain descriptive; they will not be supplied to models because their estimation can use later observations and create data leakage.
+### Data Cleaning and Transformation
 
-## 5. Predictor information and leakage prevention: stage D
+The dataset is prepared using [`data.py`](../src/data.py), which downloads the assembled panel, saves an unmodified copy, and standardizes the `Period` column into a monthly date format. Observations are then sorted chronologically by country.
 
-In practicality, predictor belonging to forecast origin *t* are not always available at time *t* due to publication delay. Quarterly Labour Cost Index values, for example, cannot simply be assigned to earlier months of a quarter and treated as already known. The final pipeline will therefore account for each indicator's publication delay before lagged features are generated, using documented release delays and carrying forward the latest released economic observation where appropriate.
+To account for publication delays, the Dutch Conjunctuurklok indicator is shifted forward by two months within each country. This prevents the models from using economic information that would not yet have been published at the forecast date. The initial two observations per country are consequently removed because their economic histories are unavailable, leaving **570 observations** for modeling.
 
-Three predefined information sets will support the research questions:
+The supplied dataset contains no missing values or duplicate country-month combinations. No additional imputation or outlier removal is performed. Further details on the original dataset and its limitations are provided in the [dataset README](../data/README.md).
 
-| Information set | Included information | Purpose |
+### Chronological Data Splitting
+
+The processed dataset is divided using [`split.py`](../src/split.py). Rather than randomly splitting observations, the module reserves the final 60 months for testing within each country, leaving all earlier observations for training.
+
+| Dataset | Period | Observations |
+| --- | --- | ---: |
+| Training | March 2010–December 2020 | 390 (130 per country) |
+| Testing | January 2021–December 2025 | 180 (60 per country) |
+
+This chronological approach preserves the temporal structure of immigration data and prevents future target observations from entering the initial training sample. Separate country-specific models are fitted using [`train.py`](../src/train.py).
+
+### Transformations and Leakage Prevention
+
+Model-specific transformations are applied within the training pipeline. The AR-X model standardizes economic predictors using parameters estimated exclusively from the training data. Random Forest instead uses unscaled predictors alongside lagged immigration observations and seasonal Fourier features.
+
+To reflect reporting delays, the training module also excludes the final month of immigration observations from the initial model-fitting history. During forecasting, [`predict.py`](../src/predict.py) uses only the available immigration history and publication-adjusted economic information. Future economic inputs are held at their most recently available values, and the fitted models are updated with newly available observations without refitting.
+
+These procedures reduce the risk of data leakage during the walk-forward evaluation. However, historical revisions to the source statistics remain a limitation because the dataset does not contain real-time publication vintages.
+
+## 4. Implemented Machine Learning Models
+
+### Model Selection and Implementation
+
+The project compares three forecasting models, each fitted separately for Bulgaria, Poland, and Romania. Their implementations are available in [`src/models/`](../src/models/).
+
+| Model | Description | Purpose |
 | --- | --- | --- |
-| A | Immigration history and common calendar information where applicable | Assess forecasting gains without added economic information |
-| B | Set A plus Dutch Conjunctuurklok information | Establish the business-cycle comparator |
-| C | Set B plus Polish and Dutch minimum wages and Labour Cost Indices | Assess the incremental value of wage indicators |
+| [AutoREG](../src/models/baseline.py) | Autoregressive model using 18 previous immigration observations | Establish a benchmark using immigration history alone |
+| [AR-X with Fourier](../src/models/arx_fourier.py) | Autoregressive model using two immigration lags, economic indicators, and Fourier terms for annual seasonality | Evaluate whether economic information and explicit seasonality improve statistical forecasts |
+| [Random Forest](../src/models/random_forest.py) | Ensemble regression model using lagged immigration, economic indicators, and seasonal features | Examine whether nonlinear relationships improve forecasting performance |
 
-AR supplies the historical-immigration benchmark. SARIMAX and Random Forest will be evaluated with sets A, B, and C; set A corresponds to the no-exogenous-predictor SARIMA specification within the SARIMAX framework. Individual wage indicators may be explored within validation, but the predefined full-set comparison will remain visible so that exploratory feature selection does not obscure RQ3.
+The AutoREG model provides a relatively simple statistical benchmark. AR-X extends this approach by incorporating economic conditions and seasonal patterns, while Random Forest allows more flexible relationships between predictors and immigration. Comparing these approaches helps establish whether additional information and model complexity improve forecasting accuracy.
 
-Future realized economic observations will not be supplied to forecasts. SARIMAX will initially use a carry-forward path based on the latest available economic value for the required future inputs. Random Forest will use separate direct horizon models based on information available at *t* to predict immigration at *t+h*. Differences in these forecasting strategies will be documented when interpreting model comparisons.
+### Hyperparameters and Training
 
-The existing sources may contain retrospectively revised values, and the supplied panel has no real-time vintages. Release-delay alignment can reduce look-ahead leakage but cannot recreate historical vintages. Unless vintage data are obtained, evaluation will be described as a retrospective, release-delay-adjusted forecasting exercise. This limits claims about performance in a fully real-time operational setting.
+The models are fitted using [`train.py`](../src/train.py), with configurations defined in [`config.py`](../src/config.py). Hyperparameters are predefined rather than selected through grid search or automated optimization. The AR-X model uses three Fourier harmonics, while Random Forest uses 200 trees, a minimum leaf size of three, and 80% feature subsampling. A fixed random seed ensures reproducibility.
 
-## 6. Chronological validation and final testing: stage C
+No under-sampling, over-sampling, or synthetic data generation is applied. The complete available training history is retained, apart from observations excluded through preprocessing, publication-delay alignment, or lag construction. This preserves the chronological structure of the relatively small monthly datasets.
 
-The following is the planned development split for Poland; it is not the
-current baseline evaluation split:
+### Comparative Evaluation
 
-| Period | Role |
-| --- | --- |
-| January 2010–December 2017 | Initial training history |
-| January 2018–December 2022 | Walk-forward validation target months |
-| January 2023–December 2025 | Reserved final-test target months |
+All three models are evaluated using the same country-specific test periods and forecast horizons through [`predict.py`](../src/predict.py). Walk-forward evaluation generates one-, three-, and six-month-ahead forecasts at successive monthly origins. Newly available observations are incorporated into the forecasting histories without refitting the models.
 
-An expanding training window is preferred initially because the sample contains only 192 months and discarding older observations would reduce training information. A rolling-window alternative may be assessed during validation if structural change materially reduces performance, but it will not be selected using final-test errors.
+Forecasts are compared against the same observed immigration counts, allowing consistent comparisons between models. Evaluation is conducted separately by country and forecasting horizon, with fewer observations available at longer horizons because predictions extending beyond the test period are excluded.
 
-For each horizon *h* in {1, 3, 6}, a target month is forecast from *h* months earlier. Thus January 2023 is forecast from December 2022 at *h=*1 and from July 2022 at *h=6*. Direct Random Forest training examples are included only when their outcome has become available by that origin. This prevents future training labels from leaking into longer-horizon models.
+The primary evaluation measure is **Mean Absolute Error (MAE)**, which expresses the average forecasting error in immigration counts. **Weighted Absolute Percentage Error (WAPE)** is also reported to express the total absolute error relative to observed immigration volume, supporting comparisons between countries of different sizes. Both metrics are calculated in [`results.py`](../src/results.py), alongside observed-versus-predicted visualizations.
 
-## 7. Models and methodological alternatives: stage E
-
-### 7.1 Autoregressive baseline
-
-The scientific baseline is an autoregressive model estimated by ordinary least
-squares using `sktime` `AutoREG`. The implemented
-[`train_baseline`](../src/models/baseline.py) function fits
-`AutoREG(lags=18, trend="c")` to the chronological training series. The current
-pipeline reserves the final six monthly observations as a terminal holdout and
-generates forecasts for horizons one through six.
-
-This baseline tests how much forecast accuracy can be obtained from immigration history alone. Its strengths are transparency and limited complexity. Its limitations include linear dynamics and the absence of economic predictors. The current terminal-holdout experiment is a baseline implementation. It will
-be replaced by the planned walk-forward MAE evaluation rather than treated as
-the completed evaluation design.
-
-### 7.2 SARIMAX
-
-SARIMAX extends the statistical comparison to seasonal dynamics and external predictors. Monthly immigration motivates considering a seasonal period of 12, while autoregressive, moving-average, and differencing orders will be selected using a restrained validation grid.
-
-SARIMAX is appropriate for a relatively short time series and provides a structured way to test economic indicators alongside immigration dynamics. Its linear predictor effects may be restrictive if associations change or involve interactions. Its performance also depends on the explicit future-predictor assumptions described in Section 5. 
-
-### 7.3 Random Forest
-
-Random Forest will test whether nonlinear relationships and interactions improve on the statistical models. Separate direct models will predict one-, three-, and six-month-ahead immigration from lagged target observations and the selected information set. Hyperparameter tuning will focus on a small search over tree depth, minimum leaf size, feature subsampling, and tree count. Restricted tree complexity is important given the modest number of independent observations.
-
-Random Forest does not require standardization for split-based fitting. Its potential advantages are nonlinear modeling and limited reliance on a fixed functional form. Its limitations include weak extrapolation beyond the training outcome range, sensitivity to feature construction, and overfitting risk with small samples. These limitations justify comparison against the simpler AR and SARIMAX models rather than assuming machine learning will perform better.
-
-## 8. Evaluation and error analysis: stages F and G
-
-MAE is the primary criterion because it reports typical absolute error in immigration counts and is less dominated by occasional large errors than squared-error measures. MAE will be reported separately for each model, horizon, information set, and country. RMSE may be retained as a secondary diagnostic to show sensitivity to large misses and connect the final evaluation to the exploratory notebook.
-
-RQ1 will be evaluated through paired out-of-sample model comparisons. RQ3 will compare sets B and C within SARIMAX and Random Forest. For RQ2, each target month will be labeled unfavorable if its realized `NL-CONJCLK` value is negative and favorable if it is positive. Exactly zero will be treated as neutral and reported separately. The target-month label is used retrospectively for error analysis; its future realized value is not a forecasting input. Phase-specific MAE and the number of forecasts per phase will be reported for every model and horizon.
-
-The implemented baseline writes `results/forecasts.csv` and
-`results/metrics.csv`, then displays the MAE table and creates
-`results/forecast_comparison_by_horizon.png`. The figure shows the training
-series, holdout observations, and forecasts in separate one-, three-, and
-six-month panels. Alongside overall MAE, forecast errors will later be examined
-by month and year to identify periods when models perform poorly. Model
-comparisons will also assess how much the results vary across different samples
-of consecutive months. Comparisons between business-cycle phases will report
-the number of forecasts available, since limited observations may prevent firm
-conclusions. If additional countries are included, results will be reported
-separately for each country because immigration volumes differ.
-
-## 9. Reproducibility and completion requirements
-
-The unified implementation will retain the input snapshot, source configuration and collection dates, monthly availability rules, split definitions, feature specifications, tuning grids, random seeds, package versions, and fitted-model configuration. Random Forest seeds will be fixed. A forecast ledger will record country, model, information set, origin month, target month, horizon, observed immigration, prediction, and business-cycle phase. Evaluation tables and plots will be generated from this ledger.
-
-The current repository pins package versions in `requirements.txt` and uses
-`make all` to regenerate the data, split, model, forecasts, metrics, and
-comparison figure. Publication timing, target-definition verification,
-source-table comparability, walk-forward validation, and final hyperparameter
-grids remain explicit implementation tasks. Their resolution will be recorded
-rather than presented as already completed.
+The current evaluation reports point estimates based on the available walk-forward forecasts. Additional resampling or uncertainty estimation is not implemented, so conclusions are limited to the observed test periods rather than a distribution of potential forecasting outcomes.
