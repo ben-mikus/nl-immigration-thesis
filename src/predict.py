@@ -53,11 +53,7 @@ test = pd.read_csv("data/processed/test.csv")
 train["Period"] = pd.to_datetime(train["Period"])
 test["Period"] = pd.to_datetime(test["Period"])
 
-exog_columns = [
-    column
-    for column in train.columns
-    if column not in ["Country", "Period", "Immigration"]
-]
+exog_columns = config.ECONOMIC_FEATURES
 
 
 ### Loop through each country on a two-step process; prepare the evaluation data then loop through each forecasting model

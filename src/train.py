@@ -53,11 +53,7 @@ warnings.filterwarnings(
 train = pd.read_csv("data/processed/train.csv")
 train["Period"] = pd.to_datetime(train["Period"])
 
-exog_columns = [
-    column
-    for column in train.columns
-    if column not in ["Country", "Period", "Immigration"]
-]
+exog_columns = config.ECONOMIC_FEATURES
 
 
 ### Loop through each country to fit a separate model on each country's training sample
