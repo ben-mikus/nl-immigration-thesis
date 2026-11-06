@@ -31,6 +31,7 @@ written on each run.
 """
 
 
+import os
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -40,13 +41,35 @@ from .utils import build_logger
 logger = build_logger()
 
 
-### Load and display the accuracy metrics produced by src.predict in the walk-forward validation
+### Calculate country-level metrics from the forecasts saved by src.predict
 
-metrics = pd.read_csv("results/metrics.csv")
 forecasts = pd.read_csv("results/forecasts.csv")
 
-print("\nWalk-forward forecast accuracy (MAE)")
-print(metrics.to_string(index=False))
+def calculate_metrics(data):
+    """Return MAE, WAPE (%) and forecast count for one evaluation group."""
+    absolute_error = (data["actual"] - data["prediction"]).abs()
+    actual_total = data["actual"].abs().sum()
+    return pd.Series({
+        "mae": absolute_error.mean(),
+        "wape": 100 * absolute_error.sum() / actual_total
+        if actual_total > 0 else float("nan"),
+        "n_forecasts": len(data),
+    })
+
+
+metrics = (
+    forecasts.groupby(["country", "model", "horizon"])
+    .apply(calculate_metrics, include_groups=False)
+    .reset_index()
+)
+metrics["n_forecasts"] = metrics["n_forecasts"].astype(int)
+metrics.to_csv("results/metrics.csv", index=False, float_format="%.4f")
+
+print("\nWalk-forward forecast accuracy by country (MAE and WAPE)")
+print(metrics.to_string(
+    index=False,
+    formatters={"mae": "{:,.2f}".format, "wape": "{:.2f}%".format},
+))
 
 
 ### Load observed immigration and reconstruct dates for the shared time axis
@@ -136,7 +159,8 @@ for (country, model_name), model_forecasts in forecasts.groupby(
 
         if not horizon_metrics.empty:
             mae = horizon_metrics.iloc[0]["mae"]
-            title += f" | MAE: {mae:,.2f}"
+            wape = horizon_metrics.iloc[0]["wape"]
+            title += f" | MAE: {mae:,.2f} | WAPE: {wape:.2f}%"
         axis.set_title(title)
 
         axis.set_title(title)
@@ -154,8 +178,10 @@ for (country, model_name), model_forecasts in forecasts.groupby(
     )
     fig.tight_layout(rect=(0, 0, 1, 0.96))
 
+    os.makedirs(f"results/{country}", exist_ok=True)
+
     output_path = (
-        f"results/forecast_comparison_by_horizon_"
+        f"results/{country}/forecast_comparison_by_horizon_"
         f"{country}_{model_name}.png"
     )
 

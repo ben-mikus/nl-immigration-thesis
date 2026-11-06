@@ -2,8 +2,8 @@
 """
 src.train fits and saves forecasting models for each country-model combination. This module consumes the training panel
 produced by src.split and fits an autoregressive baseline, an AR-X model with Fourier seasonality, and a Random Forest 
-regressor model for each country. The saved .pkl artifacts represent models fitted to the original training panel and do
-not feed into src.predict for walk-forward evaluation.
+regressor model for each country. The fitted models are saved as .pkl artifacts and subsequently loaded by src.predict
+for walk-forward evaluation without refitting.
 
 Workflow
 --------

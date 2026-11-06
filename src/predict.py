@@ -139,17 +139,18 @@ for country, country_train in train.groupby("Country"):
     
     for i in range(len(y_test)):
 
-        logger.info(
-            "%s | Origin %d/%d | Training through %s | %d observations",
-            country,
-            i + 1,
-            len(y_test),
-            history.index[-1].strftime("%Y-%m"),
-            len(history),
-        )
+        if (i + 1) % 10 == 0 or i == len(y_test) - 1:
+            logger.info(
+                "%s | Forecast origin %d/%d | Observations through %s | %d observations",
+                country,
+                i + 1,
+                len(y_test),
+                history.index[-1].strftime("%Y-%m"),
+                len(history),
+            )
 
 
-        ### [B] Construct future economic inputs for future months on a carry-forward assumption
+        ### [A] Construct future economic inputs for future months on a carry-forward assumption
 
         # Calendar month at which this forecast is issued
         forecast_origin = initial_origin + pd.DateOffset(months=i)
@@ -164,8 +165,8 @@ for country, country_train in train.groupby("Country"):
             freq="MS",
         )
 
-        # Carry forward the economic information available
-        # at the forecast origin
+        ### Carry forward the economic information available at the forecast origin
+
         X_future = pd.DataFrame(
             np.repeat(
                 latest_X.to_numpy().reshape(1, -1),
@@ -185,7 +186,7 @@ for country, country_train in train.groupby("Country"):
         forecast_start = len(history)
 
 
-        ### [C] Generate forecasts from the fitted AR-X Fourier model (receives the future standardized economic inputs)
+        ### [B] Generate forecasts from the fitted AR-X Fourier model (receives the future standardized economic inputs)
 
         arx_predictions = arx_model.predict(
             start=forecast_start,
@@ -194,7 +195,7 @@ for country, country_train in train.groupby("Country"):
         )
 
 
-        ### [C] Generate forecasts from the fitted Random Forest model (requires an explicit recursive loop)
+        ### [B] Generate forecasts from the fitted Random Forest model (requires an explicit recursive loop)
 
         rf_history = history.copy()
         rf_predictions = []
@@ -337,31 +338,17 @@ for country, country_train in train.groupby("Country"):
             observed_y,
         ])
 
-    ### [F] Return to the top of the loop to repeat for the next forecast origin within the current country
+    ### Return to the top of the loop to repeat for the next forecast origin within the current country
 
 
 ### Return to the top of the loop to repeat for the next country
 
 
-### After forecasting for all countries, calculate aggregate MAE for each country by forecast horizon
+### Save forecasts for downstream evaluation in src.results
 
 forecasts = pd.DataFrame(all_forecasts)
 
-metrics = (
-    forecasts.groupby(["country", "model", "horizon"])
-    .agg(
-        mae=("absolute error", lambda x: round(x.mean(), 2)),
-        n_forecasts=("absolute error", "size")
-    )
-    .reset_index()
-)
-
-
-### Save forecasts and evaluation metrics
-
 os.makedirs("results", exist_ok=True)
-
 forecasts.to_csv("results/forecasts.csv", index=False)
-metrics.to_csv("results/metrics.csv", index=False)
 
-logger.info("Saved all country-level forecasts and evaluation metrics")
+logger.info("Saved all country-level forecasts to results/forecasts.csv")
