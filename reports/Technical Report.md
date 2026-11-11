@@ -5,19 +5,19 @@ Benjamin Mikus
 
 ## Abstract
 
-Forecasting immigration can support planning for housing, infrastructure, and public services in the Netherlands. This study examines the effectiveness of statistical and machine learning models in predicting monthly immigration associated with selected European Union countries at one-, three-, and six-month horizons. Using historical immigration records and macroeconomic indicators from origin and destination countries, the research compares autoregressive, seasonal statistical, and Random Forest models. Forecasting accuracy is assessed through chronological walk-forward evaluation using mean absolute error. The study additionally investigates whether economic indicators improve predictive performance and whether forecasting accuracy varies across Dutch business-cycle conditions.
+Forecasting immigration can support planning for housing, infrastructure, and public services in the Netherlands. This study evaluates statistical and machine learning models for forecasting monthly immigration from Bulgaria, Poland, and Romania at one-, three-, and six-month horizons. Using historical immigration records and the Dutch Conjunctuurklok business-cycle indicator, the research compares autoregressive, seasonal statistical, and Random Forest models through chronological walk-forward evaluation. The autoregressive baseline generally achieved the strongest forecasting performance, while incorporating the economic indicator produced inconsistent improvements. Forecasting accuracy also varied across business-cycle conditions, although no consistent relationship emerged across countries. These findings highlight the importance of country-specific evaluation and competitive statistical benchmarks.
 
 ## Introduction
 
 Migration plays an important role in the demographic and economic development of the Netherlands. Immigration contributes to the Dutch labor supply while also influencing demand for housing, infrastructure, and public services. Consequently, anticipating changes in migration flows could provide valuable information to policymakers, municipalities, businesses, and researchers (State Commission Demographic Developments 2050, 2024).
 
-However, forecasting migration remains challenging due to the complex relationships between historical migration patterns, economic conditions, and individual migration decisions. This project investigates whether statistical and machine learning models can improve short-term forecasts of monthly immigration associated with selected European Union countries into the Netherlands. Specifically, the project predicts monthly immigration counts at one-, three-, and six-month horizons, rather than individual migration decisions or motives.
+However, forecasting migration remains challenging due to the complex relationships between historical migration patterns, economic conditions, and individual migration decisions. This project investigates whether statistical and machine learning models can improve short-term forecasts of monthly immigration from Bulgaria, Poland, and Romania into the Netherlands. Specifically, the project predicts monthly immigration counts at one-, three-, and six-month horizons, rather than individual migration decisions or motives.
 
 Although improved forecasts could eventually support public planning, this project primarily serves as a research demonstration. Furthermore, country-specific forecasts risk reinforcing negative stereotypes or being interpreted beyond what the data supports. Transparent reporting of forecasting accuracy and limitations is therefore essential, particularly when considering potential applications affecting immigrants and receiving communities.
 
-The overarching research question is: **To what extent do statistical and machine learning models, supplemented with economic indicators, improve forecasts of monthly immigration associated with selected EU countries into the Netherlands at one-, three-, and six-month horizons, and how does their performance vary across Dutch business-cycle phases?**
+The overarching research question is: **To what extent do statistical and machine learning models, supplemented with the Dutch Conjunctuurklok business-cycle indicator, improve forecasts of monthly immigration from selected EU countries into the Netherlands at one-, three-, and six-month horizons, and how does their performance vary across Dutch business-cycle conditions?**
 
-Three subquestions examine (1) differences in forecasting accuracy between statistical and machine learning models, (2) performance across favorable and unfavorable economic conditions, and (3) the additional predictive value of origin-country and destination-country economic indicators.
+Three subquestions examine (1) differences in forecasting accuracy between statistical and machine learning models, (2) performance across favorable and unfavorable Dutch business-cycle conditions, and (3) the additional predictive value of the Conjunctuurklok indicator.
 
 The remainder of this report presents the relevant literature, methodology, experimental results and discussion, followed by conclusions and limitations.
 
@@ -31,7 +31,7 @@ Research examining intra-EU migration provides stronger evidence for the relevan
 
 Within the Dutch context, van Stiphout-Kramer et al. (2024) identified labor demand and business-cycle conditions as important historical drivers of migration, although their analysis does not establish the comparative forecasting accuracy of different models across economic conditions.
 
-Collectively, these studies leave uncertainty regarding the relative performance of statistical and machine learning models for monthly intra-EU immigration into the Netherlands. This project addresses that gap by comparing models across multiple forecasting horizons, examining business-cycle-dependent accuracy, and evaluating the incremental predictive value of macroeconomic indicators. Further discussion of the scientific literature is provided in the repository's Literature Review.
+Collectively, these studies leave uncertainty regarding the relative performance of statistical and machine learning models for monthly intra-EU immigration into the Netherlands. This project addresses that gap by comparing models across multiple forecasting horizons, examining business-cycle-dependent accuracy, and evaluating the incremental predictive value of the Dutch Conjunctuurklok indicator.
 
 ## Methodology
 
@@ -92,66 +92,105 @@ Metrics and observed-versus-predicted visualizations are generated through `src/
 
 ### Overall Forecasting Performance
 
-The forecasting performance of the three models was evaluated across Bulgaria, Poland, and Romania at one-, three-, and six-month forecasting horizons. Each country was evaluated over a 60-month out-of-sample period, with forecasts generated through a fixed-model walk-forward procedure. Performance was assessed using Mean Absolute Error (MAE) and Weighted Absolute Percentage Error (WAPE), with lower values indicating greater forecasting accuracy.
+The three forecasting models were evaluated across Bulgaria, Poland, and Romania at one-, three-, and six-month horizons. Out-of-sample performance was assessed using Mean Absolute Error (MAE) and Weighted Absolute Percentage Error (WAPE), with lower values indicating greater forecasting accuracy. Each model was evaluated over a five-year test period using the fixed-model walk-forward procedure described in the methodology.
 
-Table 1 summarizes WAPE across all country-model-horizon combinations. Corresponding MAE values and individual forecast comparisons are available in the repository's `results/` directory and can be reproduced using `src/predict.py` and `src/results.py`.
+Table 1 presents the forecasting performance obtained using the Dutch Conjunctuurklok indicator. The results are produced by `src/predict.py` and `src/results.py`, with the individual forecasts and evaluation metrics stored in the repository's `results/` directory.
 
 **Table 1. Out-of-sample forecasting accuracy by country, model, and horizon (WAPE %).**
 
 | Country | Model | 1 month | 3 months | 6 months |
 |---|---|---:|---:|---:|
-| Bulgaria | AutoREG | **11.96** | **13.81** | **15.57** |
-| | AR-X Fourier | 12.46 | 16.64 | 20.55 |
-| | Random Forest | 18.04 | 20.69 | 21.14 |
-| Poland | AutoREG | 10.18 | 11.77 | 13.37 |
-| | AR-X Fourier | **8.13** | **9.28** | **10.74** |
-| | Random Forest | 10.06 | 10.93 | 11.69 |
-| Romania | AutoREG | **14.51** | **14.31** | **13.30** |
-| | AR-X Fourier | 19.27 | 21.73 | 21.65 |
-| | Random Forest | 20.76 | 23.51 | 26.74 |
+| Bulgaria | AutoREG | **11.34** | **12.94** | **14.31** |
+| | AR-X Fourier | 12.37 | 16.49 | 20.33 |
+| | Random Forest | 17.88 | 20.89 | 23.87 |
+| Poland | AutoREG | 10.26 | 12.38 | 13.45 |
+| | AR-X Fourier | **8.06** | **9.09** | **10.31** |
+| | Random Forest | 9.67 | 10.65 | 11.57 |
+| Romania | AutoREG | **14.52** | **14.25** | **13.26** |
+| | AR-X Fourier | 19.39 | 21.76 | 21.42 |
+| | Random Forest | 20.61 | 24.62 | 28.91 |
 
-The results reveal differences in forecasting accuracy across both countries and model architectures. For Bulgaria and Romania, the autoregressive baseline achieved the lowest WAPE at all three horizons. In contrast, AR-X Fourier achieved the lowest WAPE for Poland, where its errors ranged from 8.13% at the one-month horizon to 10.74% at the six-month horizon. Random Forest did not outperform both statistical alternatives at any evaluated country-horizon combination.
+The results demonstrate differences in forecasting accuracy across countries and model architectures. AutoREG achieved the lowest WAPE across all three horizons for Bulgaria and Romania, while AR-X Fourier achieved the lowest WAPE for Poland. Random Forest did not achieve the lowest error for any evaluated country-horizon combination.
 
-Forecasting accuracy also varied with the prediction horizon. For most country-model combinations, WAPE increased as the forecasting horizon extended from one to six months. An exception was the Romanian autoregressive baseline, for which WAPE decreased from 14.51% to 13.30%.
+The autoregressive baseline therefore demonstrated the strongest overall performance across the selected countries, achieving the lowest WAPE in six of nine country-horizon comparisons. However, the results also suggest that no single model architecture consistently performs best across all countries.
 
-**[Insert Figure 2: Comparison of WAPE across forecasting horizons, with separate panels for Bulgaria, Poland, and Romania.]**
+Forecasting accuracy generally decreased as the prediction horizon increased. This pattern was particularly visible in Bulgaria, where baseline WAPE increased from 11.34% at the one-month horizon to 14.31% at the six-month horizon. Poland demonstrated a similar pattern across all three models. In contrast, Romania's baseline WAPE decreased from 14.52% to 13.26% as the horizon extended, indicating that the relationship between forecasting horizon and accuracy was not uniform.
 
-**[Interpretation to complete: Discuss the relative performance of the three architectures, the differences observed between countries, and the extent to which the findings meet your expectations. Refer to selected observed-versus-predicted plots where they provide additional evidence.]**
+These findings suggest that the additional complexity of nonlinear modeling or explicit seasonal and economic features does not necessarily translate into improved forecasting accuracy. Differences in the underlying immigration series may influence which model specifications are most appropriate. Nevertheless, the results alone do not establish which characteristics explain the country-specific differences.
 
 ### Contribution of Economic Indicators
 
-The second analysis examines whether incorporating economic information improves forecasting accuracy beyond what can be achieved using historical immigration observations and seasonal features. The current forecasting implementation incorporates the Dutch Conjunctuurklok indicator into the AR-X Fourier and Random Forest models.
+To investigate the additional predictive value of economic information, forecasting performance was compared between configurations with and without the Dutch Conjunctuurklok indicator. The comparison focuses on AR-X Fourier and Random Forest, as both models can incorporate economic predictors.
 
-Because the models differ in their underlying specifications, the performance comparison in Section 4.1 does not independently establish the contribution of economic indicators. A controlled comparison is therefore required to assess their incremental predictive value.
+Table 2 summarizes the resulting changes in WAPE. Negative values indicate lower forecasting error when the indicator was included.
 
-**[Insert Table 2: Forecasting accuracy with and without economic indicators, holding other model specifications constant. Report changes in MAE or WAPE by country and forecasting horizon.]**
+**Table 2. Change in WAPE after incorporating Conjunctuurklok (percentage points).**
 
-**[Results and interpretation to complete: Identify whether economic indicators improved or reduced forecasting accuracy, whether the effect differed across countries or horizons, and what the findings suggest about their predictive contribution.]**
+| Country | Model | 1 month | 3 months | 6 months |
+|---|---|---:|---:|---:|
+| Bulgaria | AR-X Fourier | +0.16 | +0.05 | −0.08 |
+| | Random Forest | −0.18 | +1.01 | +1.85 |
+| Poland | AR-X Fourier | +0.01 | −0.21 | −0.54 |
+| | Random Forest | +0.16 | −0.48 | −1.03 |
+| Romania | AR-X Fourier | −0.03 | +0.30 | +0.65 |
+| | Random Forest | −0.37 | −0.49 | −0.23 |
+
+The results reveal no consistent improvement from incorporating the Conjunctuurklok indicator. For Poland, both models demonstrated lower errors at the three- and six-month horizons. In contrast, the indicator was associated with higher errors for Bulgaria's Random Forest at longer horizons and Romania's AR-X Fourier at three and six months.
+
+These findings provide limited evidence that the selected economic indicator consistently improves immigration forecasts. However, small differences in the autoregressive baseline between the experimental runs indicate that the comparison may not fully isolate the indicator's contribution. Consequently, the results should be considered exploratory rather than definitive evidence of its predictive value.
 
 ### Performance Across Business-Cycle Conditions
 
-The third analysis investigates whether forecasting accuracy varies across Dutch business-cycle conditions. This comparison is intended to establish whether the models demonstrate different levels of reliability under favorable and unfavorable economic circumstances.
+To investigate whether forecasting accuracy varies across Dutch business-cycle conditions, an additional analysis was conducted using the autoregressive baseline, selected based on its overall performance. Individual forecasts were compared against observed immigration values and categorized according to contemporaneous favorable or unfavorable economic conditions, using the original, unshifted Conjunctuurklok values.
 
-The evaluation uses the individual out-of-sample forecasts produced by `src/predict.py`, alongside the Dutch Conjunctuurklok indicator. Forecasting errors are compared across economic conditions using the evaluation metrics established in the methodology.
+Table 3 presents the resulting MAE values across countries and horizons.
 
-**[Specify the classification of business-cycle conditions, including whether conditions are measured at the forecast origin or target month.]**
+**Table 3. Baseline MAE under favorable and unfavorable business-cycle conditions.**
 
-**[Insert Table 3 or Figure 3: Forecasting accuracy by business-cycle condition, model, and potentially forecasting horizon. Include sample sizes.]**
+| Country | Horizon | Favorable | Unfavorable |
+|---|---|---:|---:|
+| Bulgaria | 1 month | 105.68 | 74.67 |
+| | 3 months | 106.08 | 99.88 |
+| | 6 months | 110.94 | 119.79 |
+| Poland | 1 month | 186.84 | 216.74 |
+| | 3 months | 200.12 | 288.10 |
+| | 6 months | 204.35 | 325.06 |
+| Romania | 1 month | 151.34 | 142.30 |
+| | 3 months | 150.76 | 140.46 |
+| | 6 months | 164.65 | 109.98 |
 
-**[Results and interpretation to complete: Describe differences in forecasting accuracy across economic conditions, identify any consistent patterns, and consider whether the available observations support meaningful conclusions.]**
+The results reveal different patterns across countries. Poland consistently demonstrated higher forecasting errors during unfavorable economic conditions, with the difference increasing at longer forecasting horizons. Romania displayed the opposite relationship, with lower MAE during unfavorable conditions at all three horizons. Bulgaria demonstrated a mixed pattern, with lower errors during unfavorable conditions at shorter horizons but higher errors at the six-month horizon.
+
+![Figure 3](image.png)
+
+*Figure 3: Actual versus predicted immigration, with background shading indicating Dutch business-cycle conditions. Three country panels.*
+
+These differences suggest that forecasting accuracy may vary with economic conditions, although the direction of this relationship is not consistent across countries. The analysis is descriptive and does not establish that business-cycle conditions directly cause differences in forecasting accuracy.
 
 ### Discussion and Model Reliability
 
-The preceding analyses provide a basis for evaluating the relative strengths and limitations of the forecasting approaches. In particular, the overall performance results demonstrate that the ranking of the three models differs across the selected countries, with no single architecture achieving the lowest error in every country.
+Collectively, the findings indicate that historical immigration observations provide a useful foundation for forecasting monthly intra-EU immigration to the Netherlands. The autoregressive baseline demonstrated competitive performance across the evaluated countries, while more complex statistical and machine learning approaches provided improvements only in selected circumstances.
 
-An important consideration is the relationship between model complexity and forecasting accuracy. The Random Forest model incorporates nonlinear modeling capabilities, while AR-X Fourier explicitly represents seasonality and economic predictors. However, the additional complexity of these approaches did not consistently produce lower forecasting errors than the autoregressive baseline.
+The results also highlight the importance of country-specific forecasting behavior. Although AR-X Fourier performed best for Poland, the same model did not outperform the baseline for Bulgaria or Romania. Similarly, Random Forest's ability to capture nonlinear relationships did not consistently result in greater forecasting accuracy. These findings illustrate the limitations of assuming that model complexity necessarily produces improved predictions.
 
-**[Discussion to complete: Consider potential explanations for the observed model rankings, drawing on the characteristics of the immigration series, model specifications, and relevant findings from the Literature Review. Distinguish explanations supported by additional evidence from hypotheses.]**
+The economic-indicator experiment further demonstrates the uncertainty surrounding the predictive contribution of macroeconomic information. While incorporating Conjunctuurklok improved selected forecasts, the effect was inconsistent across countries and horizons. This does not establish that economic indicators are generally unhelpful, particularly because only one indicator was examined and the experimental comparisons may not be fully controlled.
 
-The evaluation procedure also introduces considerations regarding the reliability and generalizability of the results. Walk-forward forecasting incorporates newly available observations into model histories, but model parameters remain fixed after initial training. Consequently, the results describe the performance of models trained on an initial historical period rather than models periodically retrained using newly available observations.
+The business-cycle analysis provides an additional perspective on forecasting reliability. Differences in MAE between favorable and unfavorable economic conditions were observable, particularly for Poland. However, the contrasting patterns across countries prevent a general conclusion that unfavorable conditions consistently reduce forecasting accuracy. Moreover, the analysis evaluates only the autoregressive baseline and therefore cannot establish whether alternative models would demonstrate similar sensitivity.
 
-Furthermore, the evaluation is limited to three countries and a single five-year test period. Although the 60-month evaluation provides multiple forecast origins, no uncertainty estimation or statistical significance testing is currently performed. Differences in observed forecasting errors should therefore be interpreted within the scope of the evaluated sample.
+Several methodological limitations affect the interpretation of these results. Model parameters remain fixed throughout walk-forward evaluation, meaning the study does not assess whether periodic retraining could improve performance. Furthermore, the evaluation covers three countries and a single five-year test period, limiting the generalizability of the findings. No statistical significance testing or uncertainty estimation was performed, and differences between business-cycle conditions may reflect other characteristics of the evaluated periods.
 
-**[Discussion to complete: Integrate the findings from Sections 4.2 and 4.3, assess whether the results are consistent with relevant literature, and consider the implications for forecasting reliability. Identify any remaining limitations that materially affect the interpretation of the results.]**
+Despite these limitations, the project provides a reproducible comparison of statistical and machine learning approaches across multiple immigration series and forecasting horizons. The findings demonstrate the value of evaluating models against a competitive autoregressive benchmark and establish a foundation for further investigation using additional economic indicators, alternative model configurations, and more extensive validation procedures.
 
-The findings and limitations established in this section provide the foundation for the conclusions and recommendations for future research presented in the following section.
+## References
+
+Barker, E., & Bijak, J. (2025). Mixed-frequency VAR: A new approach to predicting and analysing future migration in Europe using macroeconomic data. *Data & Policy, 7*, Article e3. https://doi.org/10.1017/dap.2024.82
+
+Boss, K., Groeger, A., Heidland, T., Kruger, F., & Zheng, C. (2024). Forecasting bilateral asylum seeker flows with high-dimensional data and machine learning techniques. *Journal of Economic Geography, 25*(1), 3–19. https://doi.org/10.1093/jeg/lbae023
+
+Carammia, M., Iacus, S. M., & Wilkin, T. (2022). Forecasting asylum-related migration flows with machine learning and data at scale. *Scientific Reports, 12*, Article 1457. https://doi.org/10.1038/s41598-022-05241-8
+
+Landesmann, M., Leitner, S. M., & Mara, I. (2015). *Intra-EU mobility and push and pull factors in EU labour markets: Estimating a panel VAR model* (wiiw Working Paper No. 120). The Vienna Institute for International Economic Studies. https://wiiw.ac.at/intra-eu-mobility-and-push-and-pull-factors-in-eu-labour-markets-estimating-a-panel-var-model-dlp-3671.pdf
+
+State Commission Demographic Developments 2050. (2024). *Moderate growth: Report of the State Commission Demographic Developments 2050*. https://www.government.nl/documents/2024/01/15/moderate-growth
+
+van Stiphout-Kramer, B., Hendriks, B., Meijerink, G., van der Plaat, M., & van Sonsbeek, J.-M. (2024). *Economic dynamics and migration*. CPB Netherlands Bureau for Economic Policy Analysis. https://doi.org/10.13140/RG.2.2.28899.16166

@@ -173,11 +173,15 @@ for country, country_train in train.groupby("Country"):
             columns=exog_columns,
         )
 
-        X_future_scaled = pd.DataFrame(
-            scaler.transform(X_future),
-            index=X_future.index,
-            columns=X_future.columns,
-        )
+        if not X_future.empty:
+            X_future_scaled = pd.DataFrame(
+                scaler.transform(X_future),
+                index=X_future.index,
+                columns=X_future.columns,
+            )
+        else:
+            X_future_scaled = X_future
+
 
         forecast_start = len(history)
 
@@ -310,7 +314,7 @@ for country, country_train in train.groupby("Country"):
 
         # Scale the corresponding publication-adjusted economics.
         observed_X_scaled = pd.DataFrame(
-            scaler.transform(observed_X),
+            scaler.transform(observed_X) if observed_X.shape[1] > 0 else observed_X,
             index=observed_X.index,
             columns=observed_X.columns,
         )

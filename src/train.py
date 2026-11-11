@@ -94,11 +94,14 @@ for country, country_data in train.groupby("Country"):
 
     scaler = StandardScaler()
 
-    X_train_scaled = pd.DataFrame(
-        scaler.fit_transform(X_train),
-        index=X_train.index,
-        columns=X_train.columns,
-    )
+    if not X_train.empty:
+        X_train_scaled = pd.DataFrame(
+            scaler.fit_transform(X_train),
+            index=X_train.index,
+            columns=X_train.columns,
+        )
+    else:
+        X_train_scaled = X_train
 
 
     ### [C] Fit and save ARX with Fourier terms for each country

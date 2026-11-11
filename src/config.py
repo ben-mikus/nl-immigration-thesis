@@ -1,10 +1,24 @@
 # src/config.py
 """Configuration settings for the complete forecasting pipeline."""
 
+
+### Countries included in the analysis
+
+COUNTRIES = [
+    "Bulgaria",
+    # "Germany",
+    # "Italy",
+    "Poland",
+    "Romania",
+    # "Spain"
+]
+
+
 ### Economic features used as predictors in the models
 
 ECONOMIC_FEATURES = [
     "NL-CONJCLK",
+
 ]
 
 

@@ -33,6 +33,7 @@ logger = build_logger()
 
 
 ### Feature publication frequencies; used for deciding the appropriate shift for each feature
+
 FEATURE_FREQUENCIES = {
     "Country-MINWAGE": "semiannual",
     "NL-MINWAGE": "semiannual",
@@ -51,7 +52,7 @@ data = pd.read_csv(url)
 
 os.makedirs("data/raw", exist_ok=True)
 data.to_csv("data/raw/data.csv", index=False)
-logger.info("Saved (%d rows) to data/raw/data.csv", len(data))
+logger.info("Saved %d rows to data/raw/data.csv", len(data))
 
 
 ### Represent each observation as a calendar month rather than a specific day
@@ -61,6 +62,16 @@ data["Period"] = pd.PeriodIndex(
     freq="M"
 )
 data = data.sort_values(["Country", "Period"])
+
+
+### Filter data to include only the countries specified in the configuration
+
+data = data[data["Country"].isin(config.COUNTRIES)]
+
+
+## Filter data to include only the relevant economic features
+
+data = data.drop(columns=[col for col in data.columns if col not in ["Country", "Period", "Immigration"] + config.ECONOMIC_FEATURES])
 
 
 ### Validate that all economic indicators have a configured publication lag
@@ -125,4 +136,4 @@ logger.info(
 
 os.makedirs("data/processed", exist_ok=True)
 data.to_csv("data/processed/data.csv", index=False)
-logger.info("Saved processed data to data/processed/data.csv")
+logger.info("Saved %d rows to data/processed/data.csv", len(data))
