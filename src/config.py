@@ -5,11 +5,11 @@
 ### Countries included in the analysis
 
 COUNTRIES = [
-    "Bulgaria",
+    # "Bulgaria",
     # "Germany",
     # "Italy",
     "Poland",
-    "Romania",
+    # "Romania",
     # "Spain"
 ]
 
@@ -18,8 +18,27 @@ COUNTRIES = [
 
 ECONOMIC_FEATURES = [
     "NL-CONJCLK",
-
+    "Country-MINWAGE",
+    "NL-MINWAGE",
+    "Country-WAGESAL",
+    "NL-WAGESAL",
+    "Country-UNEMP",
+    "NL-UNEMP",
+    "UNEMP-GAP",
+    "Country-HICP",
+    "NL-HICP",
+    "Country-GDP",
+    "NL-GDP"
 ]
+
+CHANGE_IN_MONTHS = 12  # Number of periods to use for percentage change calculations
+
+
+FEATURE_SELECTION = "forward"  # "none" or "forward"
+
+MAX_SELECTED_FEATURES = 3
+
+MIN_MAE_IMPROVEMENT = 1.0
 
 
 ### PUBLICATION LAGS specifies the number of months to shift forward by release frequency
@@ -44,6 +63,11 @@ TEST_SIZE = 60
 BASELINE_LAGS = 18
 BASELINE_TREND = "c"
 
+### AR-X Configuration
+
+ARX_LAGS = [1, 2, 12]
+ARX_TREND = "c"
+ARX_FOURIER_ORDER = 3
 
 ### Random Forest configuration
 
