@@ -20,15 +20,24 @@ ECONOMIC_FEATURES = [
     "NL-CONJCLK",
     "Country-MINWAGE",
     "NL-MINWAGE",
+    "MINWAGE-RATIO",
     "Country-WAGESAL",
     "NL-WAGESAL",
+    "WAGESAL-GROWTH",
+    "NL-WAGESAL-GROWTH",
     "Country-UNEMP",
     "NL-UNEMP",
     "UNEMP-GAP",
+    "UNEMP-CHANGE",
+    "NL-UNEMP-CHANGE",
     "Country-HICP",
     "NL-HICP",
+    "Country-INFLATION",
+    "NL-INFLATION",
+    "HICP-GAP",
     "Country-GDP",
-    "NL-GDP"
+    "NL-GDP",
+    "GDP-GROWTH-GAP"
 ]
 
 CHANGE_IN_MONTHS = 12  # Number of periods to use for percentage change calculations
