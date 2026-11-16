@@ -1,67 +1,71 @@
 # Forecasting Intra-EU Migration to the Netherlands
 
 
-Demographic change, including migration, has important implications for the planning of Dutch housing, infrastructure, and public services. Anticipating short-term migration flows can therefore keep policymakers and business owners informed and support broader planning. This project aims to support said motivation by forecasting total monthly immigration from selected European Union (EU) countries to the Netherlands using migration history and macroeconomic conditions.
+Demographic change, including migration, has important implications for the planning of Dutch housing, infrastructure, and public services. Anticipating short-term migration flows can therefore keep policymakers and business owners informed and support broader planning. This master's thesis investigates the forecasting of monthly immigration to the Netherlands from six European Union (EU) countries: Bulgaria, Germany, Italy, Poland, Romania, and Spain. The project evaluates whether historical immigration patterns and macroeconomic indicators can be used to generate accurate short-term forecasts, comparing statistical and machine-learning approaches across one-, three-, and six-month forecasting horizons.
 
 ## Methodology
 
-The pipeline downloads a monthly migration dataset, reserves the latest six
-months as a holdout set, and fits an autoregressive baseline model to the
-remaining observations. It saves the forecasts, reports mean absolute error
-(MAE) at one-, three-, and six-month horizons, and visualizes the observed and
-predicted holdout values for each horizon.
+The project implements a reproducible forecasting pipeline that retrieves and preprocesses monthly immigration and macroeconomic data for six EU countries. Preprocessing includes accounting for economic indicator publication delays and splitting observations chronologically into training and testing datasets. Three forecasting approaches are compared: an autoregressive baseline (AutoREG) using historical immigration observations, an autoregressive model with Fourier seasonality (AR-X), and a Random Forest regression model. The latter two models support country-specific economic predictors selected through forward feature selection based on validation performance.
 
-The current baseline uses Polish immigration data and an AutoREG model. The
-planned work will compare statistical and machine-learning models, add selected
-origin- and destination-country economic indicators, and examine results across
-Dutch business-cycle conditions. See [reports/](reports/) for the literature
-review and the planned methodology documentation.
+Forecasting accuracy is evaluated at 1-, 3-, and 6-month horizons using chronological walk-forward evaluation, in which models incorporate newly available observations without refitting their parameters. Performance is measured using Mean Absolute Error (MAE) and Weighted Absolute Percentage Error (WAPE), allowing comparisons across models, forecasting horizons, and countries. The analysis additionally investigates whether macroeconomic indicators improve predictive accuracy and how forecasting performance relates to Dutch economic conditions. For further details, refer to [reports/](reports/) for the literature
+review, methodology, and technical report.
 
 ## Project Status
 
-The baseline pipeline is complete: it downloads data, creates a train/holdout
-split, trains an AutoREG model, writes forecast and evaluation tables, and
-creates a comparison chart. The supplied dataset covers monthly Polish
-immigration from January 2010 through December 2025.
+The principal forecasting pipeline has been implemented, including:
+- Data retrieval and preprocessing.
+- Publication-lag adjustments and economic feature engineering.
+- Chronological training and testing splits.
+- Training of all three forecasting models.
+- Optional forward selection of economic predictors.
+- Walk-forward forecasting without repeated model fitting.
+- Calculation of MAE and WAPE.
+- Country-specific forecast visualization and evaluation outputs.
+The pipeline supports the six countries included in the study, with country selection and model specifications controlled through src/config.py.
 
-The broader implementation is in progress. Additional countries, multivariate
-features, model comparisons, business-cycle analysis, tests, and the Streamlit
-deployment are planned but not yet implemented.
+The repository also contains academic documentation, including the literature review, methodology overview, ELSA report, and technical report.
+
+Automated testing and the Streamlit deployment interface remain incomplete. The current deployment module is a placeholder rather than a functional forecasting application.
 
 ## Repository Structure
 
 ```text
 u142701-capstone
-├── data/                 Downloaded and generated datasets
-│   ├── raw/              Downloaded source CSV files
-│   ├── processed/        Prepared data plus train/holdout splits
-│   └── README.md         Dataset coverage, sources, and limitations
-├── deployment/           Planned Streamlit application
-├── keys/                 
-├── logs/                 Pipeline logs
-├── models/               Trained model artifacts
-├── notebooks/            Exploratory analysis notebooks
-├── reports/              Literature review and planned methodology reports
-├── results/              Forecast tables, MAE metrics, and comparison chart
-├── scripts/              Supporting shell scripts
-├── src/                  Forecasting pipeline source code
-│   ├── config.py         Forecast horizons and baseline model settings
-│   ├── data.py           Downloads and prepares the source dataset
-│   ├── split.py          Creates training and holdout time-series splits
-│   ├── train.py          Fits and saves the forecasting model
-│   ├── predict.py        Generates forecasts and calculates MAE metrics
-│   ├── results.py        Displays metrics and creates horizon comparison charts
-│   ├── utils.py          Shared logging utilities
+├── data/
+│   ├── raw/                  Downloaded source dataset
+│   ├── processed/            Prepared data and train/test splits
+│   └── README.md             Dataset documentation
+├── deployment/
+│   └── app.py                Streamlit application placeholder
+├── notebooks/                Exploratory analysis artifacts
+├── reports/                  Academic documentation
+├── results/                  Forecasts, metrics, and visualizations
+├── scripts/                  Supporting shell scripts
+├── src/
+│   ├── config.py             Pipeline and model configuration
+│   ├── data.py               Downloads and prepares the source dataset
+│   ├── split.py              Creates chronological train/test splits
+│   ├── features.py           Economic predictor selection
+│   ├── train.py              Fits and saves the forecasting models
+│   ├── predict.py            Generates forecasts and calculates MAE metrics
+│   ├── results.py            Displays metrics and creates horizon comparison charts
+│   ├── utils.py              Shared logging utilities
 │   └── models/
-│       └── baseline.py   Defines the AutoREG baseline model
-├── tests/                Automated tests (planned)
-├── Makefile              Pipeline and cleanup commands
-└── requirements.txt      Pinned Python dependencies
+│       ├── baseline.py       Autoregressive baseline
+│       ├── arx_fourier.py    AR-X with Fourier seasonality
+│       └── random_forest.py  Random Forest regression
+├── tests/                    Automated testing (planned)
+├── Makefile                  Pipeline execution commands
+└── requirements.txt          Python dependencies
 ```
 
-## How to run
+Generated model artifacts and execution logs are stored locally in models/ and logs/, respectively.
 
-Begin by cloning the repository to your machine:
+## How to Run
+
+The pipeline is designed to run in a Linux environment or through Windows Subsystem for Linux (WSL).
+
+### 1. Clone the Repository
 
 ```bash
 git clone https://gitlab.uvt.nl/u1427011/u142701-capstone.git u142701
@@ -75,6 +79,8 @@ git clone https://github.com/ben-mikus/nl-immigration-thesis.git u142701
 cd u142701
 ```
 
+### 2. Install System Requirements
+
 On a new Ubuntu or WSL installation, install the required tools:
 
 ```bash
@@ -82,7 +88,7 @@ sudo apt update
 sudo apt install -y git make python3 python3-venv python3-pip
 ```
 
-Create and activate a virtual environment:
+### 3. Create and Activate the Python Virtual Environment
 
 ```bash
 python3 -m venv .venv
@@ -96,23 +102,17 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Then, run the complete pipeline from the repository root:
+### Execute the Pipeline
+
+Run the complete workflow using:
 
 ```bash
 make all
 ```
 
-`make all` downloads the source dataset, creates the train/holdout split,
-trains the baseline model, and creates these outputs:
+**Note:** Running `make all` removes all previously generated data, model artifacts, logs, and results before recreating them. Preserve any outputs needed for comparison before executing the command.
 
-- `results/forecasts.csv`: holdout observations, predictions, and absolute errors.
-- `results/metrics.csv`: MAE at the one-, three-, and six-month horizons.
-- `results/forecast_comparison_by_horizon.png`: training, observed holdout, and
-  predicted values in separate one-, three-, and six-month panels.
-
-## Available Commands
-
-The `Makefile` provides shortcuts for common tasks, many of which make up `make all`. Run these from Ubuntu/WSL with the virtual environment activated to explore different parts of the pipeline. Run `make help` to view this table in your terminal.
+The project's `Makefile` additionally supports executing the core stages of the pipeline individually. Run these from Ubuntu/WSL with the virtual environment activated to explore different parts of the pipeline. When running stages individually, their preceding stages must already have produced the required inputs. Run `make help` to view this table in your terminal.
 
 | Command | Description |
 | --- | --- |
@@ -126,3 +126,23 @@ The `Makefile` provides shortcuts for common tasks, many of which make up `make 
 | `make clear-cache` | Remove model, log, and result files. |
 | `make clear-all` | Remove both generated data and cached outputs. |
 | `make help` | Show the available Make targets. |
+
+## Limitations
+
+Several methodological considerations are important when interpreting the project results.
+
+**Data availability and revisions:** Economic publication lags are approximated using reporting frequencies rather than reconstructed from historical publication calendars. Consequently, the evaluation does not fully reproduce historical real-time data availability or statistical revisions.
+
+**Mixed reporting frequencies:** Economic indicators are published at different frequencies. Converting these into a monthly forecasting dataset requires temporal alignment and, where appropriate, carrying available observations forward.
+
+**Missing economic indicators:** Economic data availability differs between countries. Historical imputation and feature eligibility requirements help manage missing values, but they cannot recover information that was not originally reported.
+
+**Forecasting assumptions:** Models are fitted using an initial historical sample and updated with newly available observations without repeated parameter estimation. Forecasting performance may therefore be affected by structural changes occurring after initial training.
+
+**Geographic scope:** The study considers six selected EU countries rather than the entire EU. Results should not automatically be generalized to other migration corridors.
+
+**Interpretation:** The study evaluates predictive relationships, not causal effects of macroeconomic conditions on migration. Immigration data also follow the country classifications of their underlying statistical sources.
+
+## License 
+
+This repository is distributed under the terms specified in its [LICENSE](LICENSE) file. The underlying statistical datasets remain subject to their respective providers' licensing and attribution requirements. Refer to the [Data README](data/README.md) for more information.

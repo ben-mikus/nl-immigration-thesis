@@ -34,7 +34,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 from . import config
-from .feature_selection import (
+from .features import (
     VALIDATION_MONTHS,
     prepare_features,
     select_features,

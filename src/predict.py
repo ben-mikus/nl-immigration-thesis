@@ -39,7 +39,7 @@ import numpy as np
 import pandas as pd
 
 from . import config
-from .feature_selection import VALIDATION_MONTHS
+from .features import VALIDATION_MONTHS
 from .models.random_forest import make_features
 from .utils import build_logger
 
