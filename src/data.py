@@ -46,16 +46,12 @@ FEATURE_FREQUENCIES = {
     "NL-WAGESAL": "quarterly",
     "WAGESAL-GROWTH": "quarterly",
     "NL-WAGESAL-GROWTH": "quarterly",
+    "WAGESAL-GAP": "quarterly",
     "Country-UNEMP": "monthly",
     "NL-UNEMP": "monthly",
     "UNEMP-GAP": "monthly",
     "UNEMP-CHANGE": "monthly",
     "NL-UNEMP-CHANGE": "monthly",
-    "Country-HICP": "monthly",
-    "NL-HICP": "monthly",
-    "Country-INFLATION": "monthly",
-    "NL-INFLATION": "monthly",
-    "HICP-GAP": "monthly",
     "Country-GDP": "quarterly",
     "NL-GDP": "quarterly",
     "GDP-GROWTH-GAP": "quarterly"
@@ -93,6 +89,28 @@ if config.COUNTRIES is not None:
 
 data = data.sort_values(["Country", "Period"]).copy()
 logger.info("Selected countries: %s", sorted(data["Country"].unique()))
+
+
+### Retain only the configured economic features
+
+required_features = set(config.ECONOMIC_FEATURES)
+missing_features = required_features - set(data.columns)
+
+if missing_features:
+    raise ValueError(
+        f"Configured economic features missing from source: "
+        f"{sorted(missing_features)}"
+    )
+
+data = data[
+    ["Period", "Country", "Immigration"]
+    + config.ECONOMIC_FEATURES
+].copy()
+
+logger.info(
+    "Retained %d configured economic features",
+    len(config.ECONOMIC_FEATURES),
+)
 
 
 ### Validate source indicators and apply publication delays

@@ -5,12 +5,12 @@
 ### Countries included in the analysis
 
 COUNTRIES = [
-    # "Bulgaria",
-    # "Germany",
-    # "Italy",
+    "Bulgaria",
+    "Germany",
+    "Italy",
     "Poland",
-    # "Romania",
-    # "Spain"
+    "Romania",
+    "Spain"
 ]
 
 
@@ -18,25 +18,21 @@ COUNTRIES = [
 
 ECONOMIC_FEATURES = [
     "NL-CONJCLK",
-    "Country-MINWAGE",
-    "NL-MINWAGE",
+    # "Country-MINWAGE",
+    # "NL-MINWAGE",
     "MINWAGE-RATIO",
-    "Country-WAGESAL",
-    "NL-WAGESAL",
-    "WAGESAL-GROWTH",
-    "NL-WAGESAL-GROWTH",
-    "Country-UNEMP",
-    "NL-UNEMP",
+    # "Country-WAGESAL",
+    # "NL-WAGESAL",
+    # "WAGESAL-GROWTH",
+    # "NL-WAGESAL-GROWTH",
+    "WAGESAL-GAP",
+    # "Country-UNEMP",
+    # "NL-UNEMP",
     "UNEMP-GAP",
     "UNEMP-CHANGE",
     "NL-UNEMP-CHANGE",
-    "Country-HICP",
-    "NL-HICP",
-    "Country-INFLATION",
-    "NL-INFLATION",
-    "HICP-GAP",
-    "Country-GDP",
-    "NL-GDP",
+    # "Country-GDP",
+    # "NL-GDP",
     "GDP-GROWTH-GAP"
 ]
 
