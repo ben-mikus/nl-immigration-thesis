@@ -32,9 +32,12 @@ written on each run.
 
 
 import os
-
-import matplotlib.pyplot as plt
+import joblib
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
+from matplotlib.patches import Rectangle
 
 from . import config
 from .utils import build_logger
@@ -190,3 +193,267 @@ for (country, model_name), model_forecasts in forecasts.groupby(
     plt.close(fig)
 
     logger.info("Saved forecast chart to %s", output_path)
+
+
+
+### Generate a six-country summary of WAPE and selected economic features
+
+def plot_wape_summary(metrics):
+    """
+    Plot WAPE by country, model, and forecast horizon.
+
+    Displays up to six countries in a 2x3 grid, with selected
+    economic features alongside each model. All panels share
+    the same color scale, and each country's lowest WAPE is
+    highlighted. Saves the figure as PNG and PDF.
+    """
+
+    countries = [
+        country for country in config.COUNTRIES
+        if country in metrics["country"].unique()
+    ]
+
+    if not countries:
+        raise ValueError("No country metrics available.")
+
+    if len(countries) > 6:
+        raise ValueError("The summary supports at most six countries.")
+
+    models = {
+        "baseline": "Baseline",
+        "arx_fourier": "AR-X Fourier",
+        "random_forest": "Random Forest",
+    }
+
+    horizons = config.FORECASTING_HORIZONS
+
+    ### Load selected economic features from fitted model artifacts
+
+    selected_features = {}
+
+    for country in countries:
+        selected_features[(country, "baseline")] = []
+
+        for model_name in ["arx_fourier", "random_forest"]:
+            artifact = joblib.load(
+                f"models/{model_name}_{country}.pkl"
+            )
+
+            selected_features[(country, model_name)] = (
+                artifact["exog_columns"]
+            )
+
+    ### Establish one shared color scale across all countries
+
+    finite_wape = metrics["wape"].replace(
+        [np.inf, -np.inf], np.nan
+    ).dropna()
+
+    if finite_wape.empty:
+        raise ValueError("No valid WAPE values to plot.")
+
+    vmin = 0
+    vmax = max(float(finite_wape.max()), 1.0)
+
+    norm = Normalize(vmin=vmin, vmax=vmax)
+
+    cmap = plt.get_cmap("Blues").copy()
+    cmap.set_bad(color="#eeeeee")
+
+    ### Create the six-panel layout
+
+    fig, axes = plt.subplots(
+        nrows=2,
+        ncols=3,
+        figsize=(16, 9),
+    )
+
+    axes = axes.flatten()
+
+    for ax, country in zip(axes, countries):
+
+        country_metrics = metrics.loc[
+            metrics["country"] == country
+        ]
+
+        matrix = (
+            country_metrics
+            .pivot(index="model", columns="horizon", values="wape")
+            .reindex(
+                index=list(models),
+                columns=horizons,
+            )
+        )
+
+        values = matrix.to_numpy(dtype=float)
+
+        ax.imshow(
+            np.ma.masked_invalid(values),
+            cmap=cmap,
+            norm=norm,
+            aspect="auto",
+        )
+
+        ### Label the horizons
+
+        ax.set_xticks(range(len(horizons)))
+        ax.set_xticklabels(
+            [f"{h}M" for h in horizons],
+            fontsize=10,
+            fontweight="bold",
+        )
+        ax.xaxis.tick_top()
+        ax.tick_params(length=0, pad=8)
+
+        ### Label models and their selected features
+
+        labels = []
+
+        for model_name, display_name in models.items():
+
+            features = selected_features[(country, model_name)]
+
+            if features:
+                feature_text = ",\n".join(features[:3])
+                if len(features) > 3:
+                    feature_text += ", ..."
+            else:
+                feature_text = "None"
+
+            labels.append(
+                f"{display_name}\n[{feature_text}]"
+            )
+
+        ax.set_yticks(range(len(models)))
+        ax.set_yticklabels(labels, fontsize=9)
+
+        ### Annotate each cell with its WAPE percentage
+
+        valid = values[np.isfinite(values)]
+        best_wape = valid.min() if valid.size else np.nan
+
+        for i in range(len(models)):
+            for j in range(len(horizons)):
+
+                value = values[i, j]
+
+                if not np.isfinite(value):
+                    label = "N/A"
+                    text_color = "black"
+                else:
+                    label = f"{value:.1f}%"
+
+                    rgba = cmap(norm(value))
+                    luminance = (
+                        0.2126 * rgba[0]
+                        + 0.7152 * rgba[1]
+                        + 0.0722 * rgba[2]
+                    )
+                    text_color = (
+                        "white" if luminance < 0.5 else "black"
+                    )
+
+                ax.text(
+                    j, i, label,
+                    ha="center",
+                    va="center",
+                    fontsize=11,
+                    fontweight="bold",
+                    color=text_color,
+                )
+
+                # Highlight all configurations tied for best WAPE.
+                if np.isfinite(value) and np.isclose(
+                    value, best_wape
+                ):
+                    ax.add_patch(
+                        Rectangle(
+                            (j - 0.5, i - 0.5),
+                            1, 1,
+                            fill=False,
+                            edgecolor="forestgreen",
+                            linewidth=2.5,
+                        )
+                    )
+
+        ### Add country title and cell borders
+
+        ax.set_title(
+            country,
+            fontsize=15,
+            fontweight="bold",
+            color="#203a53",
+            pad=38,
+        )
+
+        ax.set_xticks(
+            np.arange(-0.5, len(horizons), 1),
+            minor=True,
+        )
+        ax.set_yticks(
+            np.arange(-0.5, len(models), 1),
+            minor=True,
+        )
+        ax.grid(
+            which="minor",
+            color="white",
+            linewidth=1.5,
+        )
+        ax.tick_params(which="minor", bottom=False, left=False)
+
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+
+    ### Hide panels if fewer than six countries are available
+
+    for ax in axes[len(countries):]:
+        ax.set_visible(False)
+
+    ### Figure title, notes, and shared colorbar
+
+    fig.suptitle(
+        "Forecast Performance by Country",
+        fontsize=22,
+        fontweight="bold",
+        y=0.98,
+    )
+
+    fig.subplots_adjust(
+        left=0.11,
+        right=0.98,
+        top=0.82,
+        bottom=0.19,
+        wspace=0.50,
+        hspace=0.40,
+    )
+
+    colorbar_ax = fig.add_axes([0.35, 0.095, 0.40, 0.025])
+
+    colorbar = fig.colorbar(
+        plt.cm.ScalarMappable(norm=norm, cmap=cmap),
+        cax=colorbar_ax,
+        orientation="horizontal",
+    )
+    colorbar.set_label("WAPE (%) — lower is better")
+
+
+    ### Save both raster and vector versions
+
+    os.makedirs("results", exist_ok=True)
+
+    for extension in ["png"]:
+        output_path = f"results/wape_summary.{extension}"
+
+        fig.savefig(
+            output_path,
+            dpi=300,
+            facecolor="white",
+        )
+
+        logger.info(
+            "Saved WAPE summary to %s", output_path
+        )
+
+    plt.close(fig)
+
+plot_wape_summary(metrics=metrics)
