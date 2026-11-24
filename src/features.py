@@ -47,7 +47,7 @@ def prepare_features(data, features, training_end):
     medians = fitting_X.median()
 
     # Carry previously available values forward, then fill initial gaps
-    return X.ffill().fillna(medians)
+    return X.fillna(medians)
 
 
 ### Identify candidate indicators with sufficient historical availability

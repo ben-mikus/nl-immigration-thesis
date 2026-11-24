@@ -136,7 +136,7 @@ for country, country_train in train.groupby("Country"):
         ### Same historical reference period usedduring feature validation
         medians = X.iloc[:selection_split].median()
 
-        X = X.ffill().fillna(medians)
+        X = X.fillna(medians)
 
         if X.isna().any().any():
             raise ValueError(
