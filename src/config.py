@@ -49,7 +49,7 @@ MIN_MAE_IMPROVEMENT = 1.0
 ### PUBLICATION LAGS specifies the number of months to shift forward by release frequency
 PUBLICATION_LAGS = {
     "monthly": 2,
-    "quarterly": 4,
+    "quarterly": 5,
     "semiannual": 8,
 }
 
@@ -79,8 +79,8 @@ ARX_FOURIER_ORDER = 3
 RF_LAGS = (1, 2)
 RF_FOURIER_ORDER = 3
 
-RF_N_ESTIMATORS = 200
-RF_MIN_SAMPLES_LEAF = 3
+RF_N_ESTIMATORS = 50
+RF_MIN_SAMPLES_LEAF = 1
 RF_MAX_FEATURES = 0.8
 
 RF_RANDOM_STATE = 42
