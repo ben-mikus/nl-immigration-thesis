@@ -1,29 +1,38 @@
 ### src/train.py
 """
-src.train fits and saves forecasting models for each country-model combination. This module consumes the training panel
-produced by src.split and fits an autoregressive baseline, an AR-X model with Fourier seasonality, and a Random Forest 
-regressor model for each country. The fitted models are saved as .pkl artifacts and subsequently loaded by src.predict
-for walk-forward evaluation without refitting.
+src.train fits and saves forecasting models for each country-model
+combination. This module consumes the training panel produced by
+src.split and fits an autoregressive baseline, an AR-X model with
+Fourier seasonality, and a Random Forest model for each country.
 
 Workflow
 --------
 1. Load the training panel from data/processed/train.csv.
-2. Identify the target and predictor columns.
+2. Identify the configured economic predictors.
 3. For each country:
-   a. Prepare a monthly time index.
-   b. Fit and save the baseline AutoREG model.
-   c. Scale predictors and fit the AR-X model with Fourier terms.
-   d. Fit the Random Forest regressor.
-4. Save all models to the models/ directory.
+    a. Prepare a monthly time index.
+    b. Apply the immigration publication cutoff for final model fitting.
+    c. Fit and save the autoregressive baseline.
+    d. Select economic predictors independently for AR-X and Random
+       Forest through src.features.
+    e. Prepare selected predictors using historical median imputation.
+    f. Scale the selected predictors and fit the AR-X model.
+    g. Construct forecasting features and fit the Random Forest model.
+4. Save fitted models, applicable scaling parameters, selected
+   predictors, and feature selection histories as model artifacts.
 
 Notes
 -----
-Every column other than Country, Period, and Immigration is treated as an economic predictor. The module assumes that
-the training panel is clean, well-structured, and does not impute missing observations or explicitly validate monthly 
-continuity.
+Economic feature selection uses chronological validation within the
+training period. Missing economic predictor values are imputed using
+medians calculated from the initial fitting period before validation.
 
-Run from the repository root through ``python -m src.train`` or ``make train``. Output directories are created as needed
-and existing CSVs are overwritten.
+Final models are fitted using the training dataset, subject to the
+immigration publication cutoff. Model parameters remain fixed during
+the subsequent walk-forward evaluation in src.predict.
+
+Run from the repository root through ``python3 -m src.train``
+or ``make train``. Existing model artifacts are overwritten.
 """
 
 

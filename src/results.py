@@ -1,33 +1,33 @@
 ### src/results.py
 """
-src.results presents and visualizes the walk-forward evaluation produced in src.predict. It prints an accuracy table to
-the terminal and creates one figure for each country-model combination that displays the observed versus predicted 
-immigration over all three forecast horizons.
+src.results evaluates and visualizes the walk-forward forecasts
+produced by src.predict. Forecasting metrics are calculated separately
+for each country, model, and forecasting horizon.
 
 Workflow
------
-1. Load the saved evaluation results from src.predict.
-2. Print the walk-forward forecast accuracy table to the terminal.
-3. Load the historical training and test observations.
-4. Loop through each country-model combination:
-    a. Extract the relevant forecasts and metrics.
-    b. Generate a separate figure for each forecast horizon.
-    c. Plot the observed versus predicted immigration values.
-    d. Annotate the plots with the corresponding MAE values.
-    e. Save the figure to the results/ directory.
+--------
+1. Load the forecasts from results/forecasts.csv.
+2. Calculate MAE, WAPE, and forecast counts.
+3. Save metrics to results/metrics.csv and print them to the terminal.
+4. Load the historical training and test observations.
+5. Generate observed-versus-predicted visualizations for each
+   country-model combination across all forecasting horizons.
+6. Generate a combined WAPE summary including the economic predictors
+   selected for each country-model combination.
 
 Notes
 -----
-Historical obersvations are supplied from the original trainging and test datasets produced by src.split. No models are
-refit in this module and no forecasts or metrics are reclalculated.
+Historical observations are supplied by the training and test datasets
+produced by src.split. Selected economic predictors are retrieved from
+the fitted model artifacts. No models are refitted and no forecasts
+are regenerated in this module.
 
-Each horizon panel combines forecasts from successive origins. For example, the 3-month panel displays predictions made
-three months before their respective target months. All input files are expected to come from the same pipeline run. The
-module does not validate this consistency.
+Each horizon panel combines forecasts from successive origins.
+All input files are expected to originate from the same pipeline run.
+The module does not validate this consistency.
 
-Run from the repository root through ``pythin3 -m src.results`` or ``make results``. Additionally, ``make all`` is an
-option as results is the last step in the consecutive pipeline run by the ``all`` command. Existing figures are over-
-written on each run.
+Run from the repository root through ``python3 -m src.results``
+or ``make results``. Existing output files are overwritten.
 """
 
 

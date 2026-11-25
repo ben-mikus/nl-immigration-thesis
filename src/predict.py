@@ -1,34 +1,40 @@
 ### src/predict.py
 """
-src.predict evalauates the AutoREG baseline, AR-X with Fourier terms, and Random Forest models on an expanding, walk-
-forward window for each country included in the panel data. loaded from artifacts produced by src.train, and predictions
-are generated at successive forecast origins without refitting.
+src.predict evaluates the AutoREG baseline, AR-X with Fourier
+seasonality, and Random Forest models using an expanding-history
+walk-forward evaluation for each country. Fitted models are loaded
+from artifacts produced by src.train, and forecasts are generated
+at successive forecast origins without refitting.
 
 Workflow
------
-After loading the training and test panels, evaluation repeats the following steps for each country:
-
-1. Establish monthly target and economic predictor histories and scale the economic predictors using the initial training sample.
-2. Initialize the expanding history for walk-forward validation using the training sample.
-3. Loop through each forecast origin in the test sample, refitting models and generating predictions at each step.
-    a. Construct future economic inputs for the forecast horizons.
-    b. Generate forecasts for the specified horizons using the fitted models.
-    c. Append the forecasts to the collection of all forecasts.
-    d. Update the expanding history with the newly observed data from the test sample.
-    e. Repeat the process for the next forecast origin until the test sample is exhausted.
-
-After the country loop has completed for all countries in the panel dataset, aggregate MAE values are calculated by 
-country and forecast horizon. Country-level predictions and metrics are then saved to results/ for use in src.results.
+--------
+1. Load the training and test panels.
+2. Load fitted models and selected economic predictors for each country.
+3. Prepare economic predictors using historical median imputation
+   and initialize the immigration history subject to publication delays.
+4. Loop through each forecast origin in the test period:
+    a. Construct future economic inputs using the most recently
+       available values.
+    b. Generate forecasts for the configured horizons.
+    c. Retain forecasts whose target periods fall within the test period.
+    d. Incorporate newly available immigration observations without
+       refitting model parameters.
+5. Save all forecasts to results/forecasts.csv for evaluation by
+   src.results.
 
 Notes
 -----
-Economic predictors are scaled to put values of different units and magnitudes onto a comparable scale. Scaling remains
-fixed at its initial training-sample estimates. AR-X with Fourier uses scaled economic inputs; Random Forest does not.
+Economic predictors have already been adjusted for publication delays
+by src.data. AR-X uses scaled economic predictors, while Random Forest
+uses unscaled predictors. Scaling parameters remain fixed throughout
+evaluation.
 
-Longer horizons contribute fewer forecasts as targets beyond the end of the test sample are excluded from forecasting.
+Longer horizons contribute fewer forecasts because targets extending
+beyond the test period are excluded.
 
-Run from the repository root through ``python3 -m src.predict.py`` or ``make predict``. Outputdirectories are created as
-needed and existing CSVs are overwritten.
+Run from the repository root through ``python3 -m src.predict`` or
+``make predict``. Output directories are created as needed and existing
+CSVs are overwritten.
 """
 
 
